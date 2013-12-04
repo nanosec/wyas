@@ -1,0 +1,3 @@
+A Scheme interpreter written in Haskell, following the tutorial [Write Yourself a Scheme in 48 Hours](http://en.wikibooks.org/wiki/Write_Yourself_a_Scheme_in_48_Hours). 
+
+Currently a work in progress. 
