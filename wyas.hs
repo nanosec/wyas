@@ -11,14 +11,14 @@ data LispVal = Atom String
               | Bool Bool
 
 main :: IO ()
-main = do
-  args <- getArgs
-  putStrLn (readExpr (args !! 0))
+main = getArgs >>= print . eval . readExpr . head
 
-readExpr :: String -> String
+--Parsing
+
+readExpr :: String -> LispVal
 readExpr input = case parse parseExpr "lisp" input of
-  Left err -> "No match: " ++ show err
-  Right val -> "Found " ++ show val
+  Left err -> String $ "No match: " ++ show err
+  Right val -> val
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -74,6 +74,8 @@ parseExpr = parseAtom
             <|> parsePair
             <|> parseQuoted
 
+--instance Show
+
 showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Atom name) = name
@@ -87,3 +89,11 @@ unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
 
 instance Show LispVal where show = showVal
+
+--Evaluation
+
+eval :: LispVal -> LispVal
+eval val@(String _) = val
+eval val@(Number _) = val
+eval val@(Bool _) = val
+eval (List [Atom "quote", val]) = val
