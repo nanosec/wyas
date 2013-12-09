@@ -47,6 +47,14 @@ parseString = do
 parseNumber :: Parser LispVal
 parseNumber = liftM (Number . read) $ many1 digit
 
+parseNumberDo :: Parser LispVal
+parseNumberDo = do
+  x <- many1 digit
+  return $ (Number . read) x
+
+parseNumberBind :: Parser LispVal
+parseNumberBind = many1 digit >>= (\x -> return . Number . read $ x)
+
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
             <|> parseString
