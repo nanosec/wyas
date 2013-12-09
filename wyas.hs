@@ -47,15 +47,30 @@ parseString = do
 parseNumber :: Parser LispVal
 parseNumber = liftM (Number . read) $ many1 digit
 
-parseNumberDo :: Parser LispVal
-parseNumberDo = do
-  x <- many1 digit
-  return $ (Number . read) x
+parseList :: Parser LispVal
+parseList = liftM List $ sepBy parseExpr spaces
 
-parseNumberBind :: Parser LispVal
-parseNumberBind = many1 digit >>= (\x -> return . Number . read $ x)
+parseDottedList :: Parser LispVal
+parseDottedList = do
+  head <- endBy parseExpr spaces
+  tail <- char '.' >> spaces >> parseExpr
+  return $ DottedList head tail
+
+parsePair :: Parser LispVal
+parsePair = do char '('
+               x <- try parseList <|> parseDottedList
+               char ')'
+               return x
+
+parseQuoted :: Parser LispVal
+parseQuoted = do
+  char '\''
+  x <- parseExpr
+  return $ List [Atom "quote", x]
 
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
             <|> parseString
             <|> parseNumber
+            <|> parsePair
+            <|> parseQuoted
