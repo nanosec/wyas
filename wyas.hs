@@ -109,7 +109,10 @@ primitives = [("+", numericBinop (+)),
               ("/", numericBinop div),
               ("mod", numericBinop mod),
               ("quotient", numericBinop quot),
-              ("remainder", numericBinop rem)]
+              ("remainder", numericBinop rem),
+              ("symbol?", unaryOp symbolPred),
+              ("string?", unaryOp stringPred),
+              ("number?", unaryOp numberPred)]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
 numericBinop op params = Number $ foldl1 op $ map unpackNum params
@@ -122,3 +125,18 @@ unpackNum (String n) = let parsed = reads n :: [(Integer, String)] in
                             else fst $ parsed !! 0
 unpackNum (List [n]) = unpackNum n
 unpackNum _ = 0
+
+unaryOp :: (LispVal -> LispVal) -> [LispVal] -> LispVal
+unaryOp op [param] = op param
+
+symbolPred :: LispVal -> LispVal
+symbolPred (Atom _) = Bool True
+symbolPred _ = Bool False
+
+stringPred :: LispVal -> LispVal
+stringPred (String _) = Bool True
+stringPred _ = Bool False
+
+numberPred :: LispVal -> LispVal
+numberPred (Number _) = Bool True
+numberPred _ = Bool False
