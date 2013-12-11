@@ -112,7 +112,9 @@ primitives = [("+", numericBinop (+)),
               ("remainder", numericBinop rem),
               ("symbol?", unaryOp symbolPred),
               ("string?", unaryOp stringPred),
-              ("number?", unaryOp numberPred)]
+              ("number?", unaryOp numberPred),
+              ("symbol->string", unaryOp symbolToString),
+              ("string->symbol", unaryOp stringToSymbol)]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
 numericBinop op params = Number $ foldl1 op $ map unpackNum params
@@ -135,3 +137,9 @@ stringPred _ = Bool False
 numberPred :: LispVal -> LispVal
 numberPred (Number _) = Bool True
 numberPred _ = Bool False
+
+symbolToString :: LispVal -> LispVal
+symbolToString (Atom s) = String s
+
+stringToSymbol :: LispVal -> LispVal
+stringToSymbol (String s) = Atom s
