@@ -80,21 +80,38 @@ parseExpr = parseAtom
             <|> parsePair
             <|> parseQuoted
 
---instance Show
+--Errors
 
-showVal :: LispVal -> String
-showVal (String contents) = "\"" ++ contents ++ "\""
-showVal (Atom name) = name
-showVal (Number contents) = show contents
-showVal (Bool True) = "#t"
-showVal (Bool False) = "#f"
-showVal (List contents) = "(" ++ unwordsList contents ++ ")"
-showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
+data LispError = Default String
+               | Parser ParseError
+               | NumArgs Integer [LispVal]
+               | TypeMismatch String LispVal
+               | BadSpecialForm String LispVal
+               | NotFunction String String
+               | UnboundVar String String
 
-unwordsList :: [LispVal] -> String
-unwordsList = unwords . map showVal
+showError :: LispError -> String
+showError (Parser parseErr) = "Parse error at " ++ show parseErr
+showError (NumArgs expected found) =
+    "Expected " ++ show expected ++ " args; found values " ++ unwordsList found
+showError (TypeMismatch expected found) =
+    "Invalid type: expected " ++ expected ++ ", found " ++ show found
+showError (BadSpecialForm message form) = message ++ ": " ++ show form
+showError (NotFunction message func) = message ++ ": " ++ show func
+showError (UnboundVar message varname) = message ++ ": " ++ varname
 
-instance Show LispVal where show = showVal
+instance Show LispError where show = showError
+
+instance Error LispError where
+     noMsg = Default "An error has occurred"
+     strMsg = Default
+
+type ThrowsError = Either LispError
+
+trapError action = catchError action (return . show)
+
+extractValue :: ThrowsError a -> a
+extractValue (Right val) = val
 
 --Evaluation
 
@@ -261,35 +278,18 @@ equal [arg1, arg2] = do
                         AnyUnpacker unpackBool]
 equal badArgList = throwError $ NumArgs 2 badArgList
 
---Errors
+--instance Show
 
-data LispError = NumArgs Integer [LispVal]
-               | TypeMismatch String LispVal
-               | Parser ParseError
-               | BadSpecialForm String LispVal
-               | NotFunction String String
-               | UnboundVar String String
-               | Default String
+showVal :: LispVal -> String
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom name) = name
+showVal (Number contents) = show contents
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#f"
+showVal (List contents) = "(" ++ unwordsList contents ++ ")"
+showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
 
-showError :: LispError -> String
-showError (NumArgs expected found) =
-    "Expected " ++ show expected ++ " args; found values " ++ unwordsList found
-showError (TypeMismatch expected found) =
-    "Invalid type: expected " ++ expected ++ ", found " ++ show found
-showError (Parser parseErr) = "Parse error at " ++ show parseErr
-showError (BadSpecialForm message form) = message ++ ": " ++ show form
-showError (NotFunction message func) = message ++ ": " ++ show func
-showError (UnboundVar message varname) = message ++ ": " ++ varname
+unwordsList :: [LispVal] -> String
+unwordsList = unwords . map showVal
 
-instance Show LispError where show = showError
-
-instance Error LispError where
-     noMsg = Default "An error has occurred"
-     strMsg = Default
-
-type ThrowsError = Either LispError
-
-trapError action = catchError action (return . show)
-
-extractValue :: ThrowsError a -> a
-extractValue (Right val) = val
+instance Show LispVal where show = showVal
