@@ -5,11 +5,11 @@ import Control.Monad
 import Control.Monad.Error
 
 data LispVal = Atom String
+              | Bool Bool
+              | String String
+              | Number Integer
               | List [LispVal]
               | DottedList [LispVal] LispVal
-              | Number Integer
-              | String String
-              | Bool Bool
 
 main :: IO ()
 main = do
@@ -143,7 +143,8 @@ primitives = [("+", numericBinop (+)),
               ("||", boolBoolBinop (||)),
               ("cons", cons),
               ("car", car),
-              ("cdr", cdr)]
+              ("cdr", cdr),
+              ("eqv?", eqv)]
 
 numericBinop :: (Integer -> Integer -> Integer) ->
                 [LispVal] -> ThrowsError LispVal
@@ -223,6 +224,20 @@ cdr [DottedList [_] x] = return x
 cdr [DottedList (_ : xs) x] = return $ DottedList xs x
 cdr [badArg] = throwError $ TypeMismatch "pair" badArg
 cdr badArgList = throwError $ NumArgs 1 badArgList
+
+eqv :: [LispVal] -> ThrowsError LispVal
+eqv [(Atom arg1), (Atom arg2)] = return $ Bool $ arg1 == arg2
+eqv [(Bool arg1), (Bool arg2)] = return $ Bool $ arg1 == arg2
+eqv [(String arg1), (String arg2)] = return $ Bool $ arg1 == arg2
+eqv [(Number arg1), (Number arg2)] = return $ Bool $ arg1 == arg2
+eqv [(List arg1), (List arg2)] =
+    return $ Bool $ (length arg1 == length arg2) && (all eqvPair $ zip arg1 arg2)
+           where eqvPair (x1, x2) = case eqv [x1, x2] of
+                                      Right (Bool val) -> val
+                                      Left err -> False
+eqv [(DottedList xs x), (DottedList ys y)] = eqv [List $ xs ++ [x], List $ ys ++ [y]]
+eqv [_, _] = return $ Bool False
+eqv badArgList = throwError $ NumArgs 2 badArgList
 
 --Errors
 
