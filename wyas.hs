@@ -1,3 +1,5 @@
+{-# LANGUAGE ExistentialQuantification #-}
+
 module Main where
 import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment
@@ -144,7 +146,8 @@ primitives = [("+", numericBinop (+)),
               ("cons", cons),
               ("car", car),
               ("cdr", cdr),
-              ("eqv?", eqv)]
+              ("eqv?", eqv),
+              ("equal?", equal)]
 
 numericBinop :: (Integer -> Integer -> Integer) ->
                 [LispVal] -> ThrowsError LispVal
@@ -238,6 +241,25 @@ eqv [(List arg1), (List arg2)] =
 eqv [(DottedList xs x), (DottedList ys y)] = eqv [List $ xs ++ [x], List $ ys ++ [y]]
 eqv [_, _] = return $ Bool False
 eqv badArgList = throwError $ NumArgs 2 badArgList
+
+data Unpacker = forall a. Eq a => AnyUnpacker (LispVal -> ThrowsError a)
+
+unpackEquals :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
+unpackEquals arg1 arg2 (AnyUnpacker unpacker) =
+    result `catchError` (const $ return False)
+    where result = do unpacked1 <- unpacker arg1
+                      unpacked2 <- unpacker arg2
+                      return $ unpacked1 == unpacked2
+
+equal :: [LispVal] -> ThrowsError LispVal
+equal [arg1, arg2] = do
+  primitiveEquals <- liftM or $ mapM (unpackEquals arg2 arg2) anyUnpackers
+  eqvEquals <- eqv [arg1, arg2]
+  return $ Bool $ (primitiveEquals || let (Bool x) = eqvEquals in x)
+  where anyUnpackers = [AnyUnpacker unpackNum,
+                        AnyUnpacker unpackStr,
+                        AnyUnpacker unpackBool]
+equal badArgList = throwError $ NumArgs 2 badArgList
 
 --Errors
 
