@@ -203,8 +203,8 @@ unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
 unpackNum (String n) = let parsed = reads n
                        in if null parsed
-                          then throwError $ TypeMismatch "number" $ String n
-                          else return $ fst $ parsed !! 0
+                             then throwError $ TypeMismatch "number" $ String n
+                             else return $ fst $ parsed !! 0
 unpackNum (List [n]) = unpackNum n
 unpackNum notNum = throwError $ TypeMismatch "number" notNum
 
@@ -233,10 +233,10 @@ stringToSymbol (String s) = Atom s
 boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
              ThrowsError LispVal
 boolBinop unpacker op args = if length args /= 2
-                             then throwError $ NumArgs 2 args
-                             else do left <- unpacker $ args !! 0
-                                     right <- unpacker $ args !! 1
-                                     return $ Bool $ left `op` right
+                                then throwError $ NumArgs 2 args
+                                else do left <- unpacker $ args !! 0
+                                        right <- unpacker $ args !! 1
+                                        return $ Bool $ left `op` right
 
 numBoolBinop = boolBinop unpackNum
 strBoolBinop = boolBinop unpackStr
