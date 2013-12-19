@@ -6,6 +6,7 @@ import System.Environment
 import System.IO
 import Control.Monad
 import Control.Monad.Error
+import Data.IORef
 
 data LispVal = Atom String
               | Bool Bool
@@ -139,6 +140,13 @@ trapError action = catchError action (return . show)
 
 extractValue :: ThrowsError a -> a
 extractValue (Right val) = val
+
+--Environments
+
+type Env = IORef [(String, IORef LispVal)]
+
+nullEnv :: IO Env
+nullEnv = newIORef []
 
 --Evaluation
 
