@@ -14,6 +14,11 @@ data LispVal = Atom String
               | Number Integer
               | List [LispVal]
               | DottedList [LispVal] LispVal
+              | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
+              | Func {params :: [String],
+                      vararg :: (Maybe String),
+                      body :: [LispVal],
+                      closure :: Env}
 
 main :: IO ()
 main = do args <- getArgs
@@ -369,13 +374,19 @@ equal badArgList = throwError $ NumArgs 2 badArgList
 --instance Show
 
 showVal :: LispVal -> String
-showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Atom name) = name
-showVal (Number contents) = show contents
 showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Number contents) = show contents
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
 showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
+showVal (PrimitiveFunc _) = "<primitive>"
+showVal (Func {params = args, vararg = varargs, body = body, closure = env}) =
+    "(lambda (" ++ argStr ++ varargStr ++ ") ...)"
+    where argStr = unwords (map show args)
+          varargStr = case varargs of Nothing -> ""
+                                      Just arg -> " . " ++ arg
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
