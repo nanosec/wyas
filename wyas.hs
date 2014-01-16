@@ -127,6 +127,7 @@ data LispError = Default String
                | UnboundVar String String
 
 showError :: LispError -> String
+showError (Default message) = message
 showError (Parser parseErr) = "Parse error at " ++ show parseErr
 showError (NumArgs expected found) =
     "Expected " ++ show expected ++ " args; found values " ++ unwordsList found
