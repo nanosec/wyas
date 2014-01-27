@@ -375,7 +375,7 @@ equal :: [LispVal] -> ThrowsError LispVal
 equal arg@([List arg1, List arg2]) = eqvalList equal arg
 equal arg@([DottedList xs x, DottedList ys y]) = eqvalDotted equal arg
 equal [arg1, arg2] = do
-  primitiveEquals <- liftM or $ mapM (unpackEquals arg2 arg2) anyUnpackers
+  primitiveEquals <- liftM or $ mapM (unpackEquals arg1 arg2) anyUnpackers
   eqvEquals <- eqv [arg1, arg2]
   return $ Bool $ (primitiveEquals || let (Bool x) = eqvEquals in x)
   where anyUnpackers = [AnyUnpacker unpackNum,
