@@ -346,13 +346,19 @@ eqvalList eqvalFunc [List arg1, List arg2] =
                                  Right (Bool val) -> val
                                  Left err -> False
 
+eqvalDotted :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
+eqvalDotted eqvalFunc [DottedList xs x, DottedList ys y] =
+    do initEqval <- eqvalFunc [List xs, List ys]
+       lastEqval <- eqvalFunc [x,y]
+       boolBoolBinop (&&) [initEqval, lastEqval]
+
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [(Atom arg1), (Atom arg2)] = return $ Bool $ arg1 == arg2
 eqv [(Bool arg1), (Bool arg2)] = return $ Bool $ arg1 == arg2
 eqv [(String arg1), (String arg2)] = return $ Bool $ arg1 == arg2
 eqv [(Number arg1), (Number arg2)] = return $ Bool $ arg1 == arg2
 eqv arg@([List arg1, List arg2]) = eqvalList eqv arg
-eqv [(DottedList xs x), (DottedList ys y)] = eqv [List $ xs ++ [x], List $ ys ++ [y]]
+eqv arg@([DottedList xs x, DottedList ys y]) = eqvalDotted eqv arg
 eqv [_, _] = return $ Bool False
 eqv badArgList = throwError $ NumArgs 2 badArgList
 
@@ -367,7 +373,7 @@ unpackEquals arg1 arg2 (AnyUnpacker unpacker) =
 
 equal :: [LispVal] -> ThrowsError LispVal
 equal arg@([List arg1, List arg2]) = eqvalList equal arg
-equal [DottedList xs x, DottedList ys y] = equal [List $ xs ++ [x], List $ ys ++ [y]]
+equal arg@([DottedList xs x, DottedList ys y]) = eqvalDotted equal arg
 equal [arg1, arg2] = do
   primitiveEquals <- liftM or $ mapM (unpackEquals arg2 arg2) anyUnpackers
   eqvEquals <- eqv [arg1, arg2]
