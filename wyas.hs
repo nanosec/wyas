@@ -306,11 +306,10 @@ stringToSymbol (String s) = Atom s
 
 boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
              ThrowsError LispVal
-boolBinop unpacker op args = if length args /= 2
-                                then throwError $ NumArgs 2 args
-                                else do left <- unpacker $ args !! 0
-                                        right <- unpacker $ args !! 1
+boolBinop unpacker op [arg1, arg2] = do left <- unpacker $ arg1
+                                        right <- unpacker $ arg2
                                         return $ Bool $ left `op` right
+boolBinop unpacker op args = throwError $ NumArgs 2 args
 
 numBoolBinop = boolBinop unpackNum
 strBoolBinop = boolBinop unpackStr
