@@ -209,6 +209,22 @@ eval env val@(Number _) = return val
 eval env val@(Bool _) = return val
 eval env (Atom id) = getVar env id
 eval env (List [Atom "quote", val]) = return val
+eval env (List (Atom "and" : exprs)) =
+    case exprs of
+      [] -> return $ Bool True
+      [expr] -> eval env expr
+      (expr : rest) -> do result <- eval env expr
+                          case result of
+                            Bool False -> return result
+                            _ -> eval env (List (Atom "and" : rest))
+eval env (List (Atom "or" : exprs)) =
+    case exprs of
+      [] -> return $ Bool False
+      [expr] -> eval env expr
+      (expr : rest) -> do result <- eval env expr
+                          case result of
+                            Bool False -> eval env (List (Atom "or" : rest))
+                            _ -> return result
 eval env (List [Atom "if", pred, conseq, alt]) =
     do result <- eval env pred
        case result of
@@ -259,8 +275,6 @@ primitives = [("+", numericBinop (+)),
               ("string>?", strBoolBinop (>)),
               ("string<=?", strBoolBinop (<=)),
               ("string>=?", strBoolBinop (>=)),
-              ("and", boolBoolBinop (&&)),
-              ("or", boolBoolBinop (||)),
               ("cons", cons),
               ("car", car),
               ("cdr", cdr),
