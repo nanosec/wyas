@@ -233,10 +233,15 @@ eval env (List [Atom "if", pred, conseq, alt]) =
 eval env (List (Atom "cond" : clauseList)) =
     clauseRecur clauseList
     where clauseRecur (List [test, expr] : rest) =
-              do result <- eval env test
-                 case result of
-                   Bool False -> clauseRecur rest
-                   otherwise -> eval env expr
+              case test of
+                Atom "else" ->
+                    if null rest
+                       then eval env expr
+                       else throwError $ Default "'else' clause must be last"
+                _ -> do result <- eval env test
+                        case result of
+                          Bool False -> clauseRecur rest
+                          _ -> eval env expr
 eval env (List [Atom "define", Atom var, form]) =
     eval env form >>= defineVar env var
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
