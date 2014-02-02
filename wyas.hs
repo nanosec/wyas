@@ -25,7 +25,7 @@ main = do args <- getArgs
           case length args of
             0 -> runRepl
             1 -> runOne $ args !! 0
-            otherwise -> putStrLn "Program takes only 0 or 1 argument"
+            _ -> putStrLn "Program takes only 0 or 1 argument"
 
 --REPL
 
@@ -229,7 +229,7 @@ eval env (List [Atom "if", pred, conseq, alt]) =
     do result <- eval env pred
        case result of
          Bool False -> eval env alt
-         otherwise -> eval env conseq
+         _ -> eval env conseq
 eval env (List (Atom "cond" : clauseList)) =
     clauseRecur clauseList
     where clauseRecur (List [test, expr] : rest) =
