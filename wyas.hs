@@ -375,7 +375,7 @@ eqvalDotted :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] -> ThrowsError Li
 eqvalDotted eqvalFunc [DottedList xs x, DottedList ys y] =
     do initEqval <- eqvalFunc [List xs, List ys]
        lastEqval <- eqvalFunc [x,y]
-       boolBoolBinop (&&) [initEqval, lastEqval]
+       boolBoolBinop (&&) [lastEqval, initEqval]
 
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [Atom arg1, Atom arg2] = return $ Bool $ arg1 == arg2
