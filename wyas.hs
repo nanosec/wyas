@@ -241,7 +241,9 @@ eval env (List (Atom "cond" : clauseList)) =
                 _ -> do result <- eval env test
                         case result of
                           Bool False -> clauseRecur rest
-                          _ -> liftM last $ mapM (eval env) exprs
+                          _ -> if null exprs
+                                  then return result
+                                  else liftM last $ mapM (eval env) exprs
 eval env (List [Atom "define", Atom var, form]) =
     eval env form >>= defineVar env var
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
