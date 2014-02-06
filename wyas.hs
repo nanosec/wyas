@@ -271,17 +271,17 @@ primitives = [("+", numericBinop (+)),
               ("number?", unaryOp numberPred),
               ("symbol->string", unaryOp symbolToString),
               ("string->symbol", unaryOp stringToSymbol),
-              ("=", numBoolBinop (==)),
-              ("<", numBoolBinop (<)),
-              (">", numBoolBinop (>)),
-              ("/=", numBoolBinop (/=)),
-              (">=", numBoolBinop (>=)),
-              ("<=", numBoolBinop (<=)),
-              ("string=?", strBoolBinop (==)),
-              ("string<?", strBoolBinop (<)),
-              ("string>?", strBoolBinop (>)),
-              ("string<=?", strBoolBinop (<=)),
-              ("string>=?", strBoolBinop (>=)),
+              ("=", numBoolOp (==)),
+              ("<", numBoolOp (<)),
+              (">", numBoolOp (>)),
+              ("/=", numBoolOp (/=)),
+              (">=", numBoolOp (>=)),
+              ("<=", numBoolOp (<=)),
+              ("string=?", strBoolOp (==)),
+              ("string<?", strBoolOp (<)),
+              ("string>?", strBoolOp (>)),
+              ("string<=?", strBoolOp (<=)),
+              ("string>=?", strBoolOp (>=)),
               ("cons", cons),
               ("car", car),
               ("cdr", cdr),
@@ -325,16 +325,15 @@ symbolToString (Atom s) = String s
 stringToSymbol :: LispVal -> LispVal
 stringToSymbol (String s) = Atom s
 
-boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
-             ThrowsError LispVal
-boolBinop unpacker op [arg1, arg2] = do left <- unpacker $ arg1
-                                        right <- unpacker $ arg2
-                                        return $ Bool $ left `op` right
-boolBinop unpacker op args = throwError $ NumArgs 2 args
+boolOp :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
+          ThrowsError LispVal
+boolOp unpacker op args = do
+  unpackedArgs <- mapM unpacker args
+  return . Bool . and $ zipWith op unpackedArgs (tail unpackedArgs)
 
-numBoolBinop = boolBinop unpackNum
-strBoolBinop = boolBinop unpackStr
-boolBoolBinop = boolBinop unpackBool
+numBoolOp = boolOp unpackNum
+strBoolOp = boolOp unpackStr
+boolBoolOp = boolOp unpackBool
 
 unpackStr :: LispVal -> ThrowsError String
 unpackStr (String s) = return s
@@ -377,7 +376,7 @@ eqvalDotted :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] -> ThrowsError Li
 eqvalDotted eqvalFunc [DottedList xs x, DottedList ys y] =
     do initEqval <- eqvalFunc [List xs, List ys]
        lastEqval <- eqvalFunc [x,y]
-       boolBoolBinop (&&) [lastEqval, initEqval]
+       boolBoolOp (&&) [lastEqval, initEqval]
 
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [Atom arg1, Atom arg2] = return $ Bool $ arg1 == arg2
