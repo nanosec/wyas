@@ -244,6 +244,20 @@ eval env (List (Atom "cond" : clauseList)) =
                           _ -> if null exprs
                                   then return result
                                   else liftM last $ mapM (eval env) exprs
+eval env (List (Atom "case" : key : clauseList)) =
+    do value <- eval env key
+       clauseRecur clauseList value
+       where clauseRecur (List (test : exprs) : rest) value =
+                 case test of
+                   List [datum] ->
+                       do result <- liftThrows $ eqv [value, datum]
+                          case result of
+                            Bool False -> clauseRecur rest value
+                            _ -> liftM last $ mapM (eval env) exprs
+                   Atom "else" ->
+                       if null rest
+                          then liftM last $ mapM (eval env) exprs
+                          else throwError $ Default "'else' clause must be last"
 eval env (List [Atom "define", Atom var, form]) =
     eval env form >>= defineVar env var
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
