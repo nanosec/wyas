@@ -388,9 +388,10 @@ eqvalList eqvalFunc [List arg1, List arg2] =
 
 eqvalDotted :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
 eqvalDotted eqvalFunc [DottedList xs x, DottedList ys y] =
-    do initEqval <- eqvalFunc [List xs, List ys]
-       lastEqval <- eqvalFunc [x,y]
-       boolBoolOp (&&) [lastEqval, initEqval]
+    do lastEqval <- eqvalFunc [x,y]
+       case lastEqval of
+         Bool True -> eqvalFunc [List xs, List ys]
+         false -> return false
 
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [Atom arg1, Atom arg2] = return $ Bool $ arg1 == arg2
