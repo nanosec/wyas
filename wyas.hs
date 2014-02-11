@@ -341,6 +341,8 @@ stringToSymbol (String s) = Atom s
 
 boolOp :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
           ThrowsError LispVal
+boolOp _ _ [] = throwError $ NumArgs 2 []
+boolOp _ _ arg@[_] = throwError $ NumArgs 2 arg
 boolOp unpacker op args = do
   unpackedArgs <- mapM unpacker args
   return . Bool . and $ zipWith op unpackedArgs (tail unpackedArgs)
