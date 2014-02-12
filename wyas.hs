@@ -230,7 +230,7 @@ eval env (List [Atom "if", pred, conseq, alt]) =
        case result of
          Bool False -> eval env alt
          _ -> eval env conseq
-eval env (List (Atom "cond" : clauseList)) =
+eval env form@((List (Atom "cond" : clauseList))) =
     clauseRecur clauseList
     where clauseRecur (List (test : exprs) : rest) =
               case test of
@@ -244,7 +244,8 @@ eval env (List (Atom "cond" : clauseList)) =
                           _ -> if null exprs
                                   then return result
                                   else liftM last $ mapM (eval env) exprs
-eval env (List (Atom "case" : key : clauseList)) =
+          clauseRecur _ = throwError $ BadSpecialForm "ill-formed cond" form
+eval env form@((List (Atom "case" : key : clauseList))) =
     do value <- eval env key
        clauseRecur clauseList value
        where clauseRecur (List (test : exprs) : rest) value =
@@ -258,6 +259,8 @@ eval env (List (Atom "case" : key : clauseList)) =
                        if null rest
                           then liftM last $ mapM (eval env) exprs
                           else throwError $ Default "'else' clause must be last"
+             clauseRecur _ _ =
+                 throwError $ BadSpecialForm "ill-formed case" form
 eval env (List [Atom "define", Atom var, form]) =
     eval env form >>= defineVar env var
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
