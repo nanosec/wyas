@@ -250,11 +250,11 @@ eval env form@((List (Atom "case" : key : clauseList))) =
        clauseRecur clauseList value
        where clauseRecur (List (test : exprs) : rest) value =
                  case test of
-                   List [datum] ->
-                       do result <- liftThrows $ eqv [value, datum]
-                          case result of
-                            Bool False -> clauseRecur rest value
-                            _ -> liftM last $ mapM (eval env) exprs
+                   List datums ->
+                       do result <- liftThrows $ value `elem'` datums
+                          if result
+                             then liftM last $ mapM (eval env) exprs
+                             else clauseRecur rest value
                    Atom "else" ->
                        if null rest
                           then liftM last $ mapM (eval env) exprs
@@ -268,6 +268,13 @@ eval env (List (Atom func : args)) =
     mapM (eval env) args >>= liftThrows . apply func
 eval env badForm =
     throwError $ BadSpecialForm "Unrecognized special form" badForm
+
+elem' :: LispVal -> [LispVal] -> ThrowsError Bool
+elem' _ [] = return False
+elem' x (y:ys) = do result <- eqv [x, y]
+                    case result of
+                      Bool True -> return True
+                      _ -> elem' x ys
 
 apply :: String -> [LispVal] -> ThrowsError LispVal
 apply func args =
