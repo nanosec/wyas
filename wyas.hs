@@ -244,6 +244,8 @@ eval env form@((List (Atom "cond" : clauseList))) =
                           _ -> if null exprs
                                   then return result
                                   else liftM last $ mapM (eval env) exprs
+          clauseRecur [] =
+              throwError $ BadSpecialForm "cond: no true clause" form
           clauseRecur _ = throwError $ BadSpecialForm "ill-formed cond" form
 eval env form@((List (Atom "case" : key : clauseList))) =
     do value <- eval env key
@@ -259,6 +261,8 @@ eval env form@((List (Atom "case" : key : clauseList))) =
                        if null rest
                           then liftM last $ mapM (eval env) exprs
                           else throwError $ Default "'else' clause must be last"
+             clauseRecur [] _ =
+                 throwError $ BadSpecialForm "case: no true clause" form
              clauseRecur _ _ =
                  throwError $ BadSpecialForm "ill-formed case" form
 eval env (List [Atom "define", Atom var, form]) =
