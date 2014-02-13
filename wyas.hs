@@ -236,14 +236,14 @@ eval env form@((List (Atom "cond" : clauseList))) =
               case test of
                 Atom "else" ->
                     if null rest
-                       then liftM last $ mapM (eval env) exprs
+                       then evalExprs env exprs
                        else throwError $ Default "'else' clause must be last"
                 _ -> do result <- eval env test
                         case result of
                           Bool False -> clauseRecur rest
                           _ -> if null exprs
                                   then return result
-                                  else liftM last $ mapM (eval env) exprs
+                                  else evalExprs env exprs
           clauseRecur [] =
               throwError $ BadSpecialForm "cond: no true clause" form
           clauseRecur _ = throwError $ BadSpecialForm "ill-formed cond" form
@@ -255,11 +255,11 @@ eval env form@((List (Atom "case" : key : clauseList))) =
                    List datums ->
                        do result <- liftThrows $ value `elem'` datums
                           if result
-                             then liftM last $ mapM (eval env) exprs
+                             then evalExprs env exprs
                              else clauseRecur rest value
                    Atom "else" ->
                        if null rest
-                          then liftM last $ mapM (eval env) exprs
+                          then evalExprs env exprs
                           else throwError $ Default "'else' clause must be last"
              clauseRecur [] _ =
                  throwError $ BadSpecialForm "case: no true clause" form
@@ -272,6 +272,9 @@ eval env (List (Atom func : args)) =
     mapM (eval env) args >>= liftThrows . apply func
 eval env badForm =
     throwError $ BadSpecialForm "Unrecognized special form" badForm
+
+evalExprs :: Env -> [LispVal] -> IOThrowsError LispVal
+evalExprs env exprs = liftM last $ mapM (eval env) exprs
 
 elem' :: LispVal -> [LispVal] -> ThrowsError Bool
 elem' _ [] = return False
