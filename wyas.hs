@@ -290,10 +290,10 @@ apply func args =
           (lookup func primitives)
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
-primitives = [("+", numericBinop (+)),
-              ("-", numericBinop (-)),
-              ("*", numericBinop (*)),
-              ("/", numericBinop div),
+primitives = [("+", numericOp (+)),
+              ("-", numericOp (-)),
+              ("*", numericOp (*)),
+              ("/", numericOp div),
               ("modulo", numericBinop mod),
               ("quotient", numericBinop quot),
               ("remainder", numericBinop rem),
@@ -319,11 +319,15 @@ primitives = [("+", numericBinop (+)),
               ("eqv?", eqv),
               ("equal?", equal)]
 
+numericOp :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
+numericOp _ [] = throwError $ NumArgs 2 []
+numericOp _ arg@[_] = throwError $ NumArgs 2 arg
+numericOp op args = mapM unpackNum args >>= return . Number . foldl1 op
+
 numericBinop :: (Integer -> Integer -> Integer) ->
                 [LispVal] -> ThrowsError LispVal
-numericBinop op           []  = throwError $ NumArgs 2 []
-numericBinop op singleVal@[_] = throwError $ NumArgs 2 singleVal
-numericBinop op params = mapM unpackNum params >>= return . Number . foldl1 op
+numericBinop op args@[_,_] = numericOp op args
+numericBinop _ args = throwError $ NumArgs 2 args
 
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
@@ -335,8 +339,8 @@ unpackNum (List [n]) = unpackNum n
 unpackNum notNum = throwError $ TypeMismatch "number" notNum
 
 unaryOp :: (LispVal -> LispVal) -> [LispVal] -> ThrowsError LispVal
-unaryOp op [] = throwError $ NumArgs 1 []
-unaryOp op [param] = return $ op param
+unaryOp _ [] = throwError $ NumArgs 1 []
+unaryOp op [arg] = return $ op arg
 
 symbolPred :: LispVal -> LispVal
 symbolPred (Atom _) = Bool True
