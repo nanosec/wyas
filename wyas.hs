@@ -191,8 +191,7 @@ defineVar envRef var value =
        if alreadyDefined
           then setVar envRef var value
           else liftIO $ do valueRef <- newIORef value
-                           env <- readIORef envRef
-                           writeIORef envRef ((var, valueRef) : env)
+                           modifyIORef envRef ((var, valueRef):)
                            return value
 
 bindVars :: Env -> [(String, LispVal)] -> IO Env
