@@ -166,33 +166,26 @@ type Env = IORef [(String, IORef LispVal)]
 nullEnv :: IO Env
 nullEnv = newIORef []
 
-isBound :: Env -> String -> IO Bool
-isBound envRef var =
-    readIORef envRef >>= return . maybe False (const True) . lookup var
+actOnVar :: (IORef LispVal -> IOThrowsError LispVal) -> Env -> String ->
+            IOThrowsError LispVal
+actOnVar f envRef var =
+    do env <- liftIO $ readIORef envRef
+       maybe (throwError $ UnboundVar "Unbound variable" var) f (lookup var env)
 
 getVar :: Env -> String -> IOThrowsError LispVal
-getVar envRef var =
-    do env <- liftIO $ readIORef envRef
-       maybe (throwError $ UnboundVar "Getting an unbound variable" var)
-             (liftIO . readIORef)
-             (lookup var env)
+getVar = actOnVar (liftIO . readIORef)
 
 setVar :: Env -> String -> LispVal -> IOThrowsError LispVal
 setVar envRef var value =
-    do env <- liftIO $ readIORef envRef
-       maybe (throwError $ UnboundVar "Setting an unbound variable" var)
-             (liftIO . (flip writeIORef value))
-             (lookup var env)
-       return value
+    actOnVar f envRef var
+    where f valueRef = liftIO $ writeIORef valueRef value >> return value
 
 defineVar :: Env -> String -> LispVal -> IOThrowsError LispVal
-defineVar envRef var value = 
-    do alreadyDefined <- liftIO $ isBound envRef var
-       if alreadyDefined
-          then setVar envRef var value
-          else liftIO $ do valueRef <- newIORef value
-                           modifyIORef envRef ((var, valueRef):)
-                           return value
+defineVar envRef var value =
+    setVar envRef var value `catchError` makeVar
+    where makeVar _ = liftIO $ do valueRef <- newIORef value
+                                  modifyIORef envRef ((var, valueRef):)
+                                  return value
 
 bindVars :: Env -> [(String, LispVal)] -> IO Env
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
