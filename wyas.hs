@@ -43,7 +43,7 @@ evalAndPrint :: Env -> String -> IO ()
 evalAndPrint env expr = evalString env expr >>= putStrLn
 
 runOne :: String -> IO ()
-runOne expr = nullEnv >>= flip evalAndPrint expr
+runOne expr = primitiveBindings >>= flip evalAndPrint expr
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
 until_ pred prompt action = do 
@@ -53,7 +53,7 @@ until_ pred prompt action = do
      else action result >> until_ pred prompt action
 
 runRepl :: IO ()
-runRepl = nullEnv >>= until_ (== "quit") (readPrompt "λ> ") . evalAndPrint
+runRepl = primitiveBindings >>= until_ (== "quit") (readPrompt "λ> ") . evalAndPrint
 
 --Parsing
 
@@ -192,6 +192,11 @@ bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
     where extendEnv bindings env = liftM (++ env) (mapM addBinding bindings)
           addBinding (var, value) = do ref <- newIORef value
                                        return (var, ref)
+
+primitiveBindings :: IO Env
+primitiveBindings =
+    nullEnv >>= (flip bindVars $ map makePrimitiveFunc primitives)
+    where makePrimitiveFunc (var, func) = (var, PrimitiveFunc func)
 
 --Evaluation
 
