@@ -120,7 +120,7 @@ parseExpr = parseAtom
 
 data LispError = Default String
                | Parser ParseError
-               | NumArgs Integer [LispVal]
+               | NumArgs Int [LispVal]
                | TypeMismatch String LispVal
                | BadSpecialForm String LispVal
                | NotFunction String String
