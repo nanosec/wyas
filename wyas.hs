@@ -265,8 +265,10 @@ eval env form@((List (Atom "case" : key : clauseList))) =
 eval env (List [Atom "define", Atom var, form]) =
     eval env form >>= defineVar env var
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
-eval env (List (Atom func : args)) =
-    mapM (eval env) args >>= liftThrows . apply func
+eval env (List (function : args)) =
+    do f <- eval env function
+       xs <- mapM (eval env) args
+       apply f xs
 eval env badForm =
     throwError $ BadSpecialForm "Unrecognized special form" badForm
 
@@ -280,11 +282,8 @@ elem' x (y:ys) = do result <- eqv [x, y]
                       Bool True -> return True
                       _ -> elem' x ys
 
-apply :: String -> [LispVal] -> ThrowsError LispVal
-apply func args =
-    maybe (throwError $ NotFunction "Unrecognized primitive function args" func)
-          ($ args)
-          (lookup func primitives)
+apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
+apply (PrimitiveFunc func) args = liftThrows $ func args
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [("+", numericOp (+)),
