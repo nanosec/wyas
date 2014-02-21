@@ -284,6 +284,17 @@ elem' x (y:ys) = do result <- eqv [x, y]
 
 apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
 apply (PrimitiveFunc func) args = liftThrows $ func args
+apply (Func params vararg body closure) args =
+    if (numParams > numArgs) || (vararg == Nothing && numParams < numArgs)
+       then throwError $ NumArgs numParams args
+       else (liftIO $ bindVars closure argBindings) >>= flip evalExprs body
+    where numParams = length params
+          numArgs = length args
+          (reqArgs, optArgs) = splitAt numParams args
+          varargBinding = case vararg of
+                            Nothing -> []
+                            Just var -> [(var, List optArgs)]
+          argBindings = varargBinding ++ zip params reqArgs
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [("+", numericOp (+)),
