@@ -262,8 +262,13 @@ eval env form@((List (Atom "case" : key : clauseList))) =
                  throwError $ BadSpecialForm "case: no true clause" form
              clauseRecur _ _ =
                  throwError $ BadSpecialForm "ill-formed case" form
-eval env (List [Atom "define", Atom var, form]) =
-    eval env form >>= defineVar env var
+eval env (List (Atom "define" : rest)) =
+    case rest of
+      [Atom var, form] -> eval env form >>= defineVar env var
+      (List (Atom var : params) : body) ->
+          makeNormalFunc params body env >>= defineVar env var
+      (DottedList (Atom var : params) vararg : body) ->
+          makeVariadicFunc vararg params body env >>= defineVar env var
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
 eval env (List (function : args)) =
     do f <- eval env function
@@ -281,6 +286,16 @@ elem' x (y:ys) = do result <- eqv [x, y]
                     case result of
                       Bool True -> return True
                       _ -> elem' x ys
+
+extract :: LispVal -> String
+extract (Atom x) = x
+
+makeFunc :: (Maybe String) -> [LispVal] -> [LispVal] -> Env -> IOThrowsError LispVal
+makeFunc vararg params body env =
+    return $ Func (map extract params) vararg body env
+
+makeNormalFunc = makeFunc Nothing
+makeVariadicFunc = makeFunc . Just . extract
 
 apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
 apply (PrimitiveFunc func) args = liftThrows $ func args
