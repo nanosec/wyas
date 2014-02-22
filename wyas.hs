@@ -58,9 +58,7 @@ runRepl = primitiveBindings >>= until_ (== "quit") (readPrompt "λ> ") . evalAnd
 --Parsing
 
 readExpr :: String -> ThrowsError LispVal
-readExpr input = case parse parseExpr "lisp" input of
-                   Left err -> throwError $ Parser err
-                   Right val -> return val
+readExpr = either (throwError . Parser) return . parse parseExpr ""
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -153,8 +151,7 @@ extractValue (Right val) = val
 type IOThrowsError = ErrorT LispError IO
 
 liftThrows :: ThrowsError a -> IOThrowsError a
-liftThrows (Left err) = throwError err
-liftThrows (Right val) = return val
+liftThrows = either throwError return
 
 runIOThrows :: IOThrowsError String -> IO String
 runIOThrows action = runErrorT (trapError action) >>= return . extractValue
