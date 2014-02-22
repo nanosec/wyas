@@ -269,6 +269,12 @@ eval env (List (Atom "define" : rest)) =
           makeNormalFunc params body env >>= defineVar env var
       (DottedList (Atom var : params) vararg : body) ->
           makeVariadicFunc vararg params body env >>= defineVar env var
+eval env (List (Atom "lambda" : rest)) =
+    case rest of
+      (List params : body) -> makeNormalFunc params body env
+      (DottedList params vararg : body) ->
+          makeVariadicFunc vararg params body env
+      (vararg@(Atom _) : body) -> makeVariadicFunc vararg [] body env
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
 eval env (List (function : args)) =
     do f <- eval env function
