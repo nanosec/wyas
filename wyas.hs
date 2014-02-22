@@ -310,6 +310,7 @@ apply (Func params vararg body closure) args =
                             Nothing -> []
                             Just var -> [(var, List optArgs)]
           argBindings = varargBinding ++ zip params reqArgs
+apply notFunction _ = throwError $ NotFunction notFunction
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [("+", numericOp (+)),
