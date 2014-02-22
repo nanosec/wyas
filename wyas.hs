@@ -123,7 +123,7 @@ data LispError = Default String
                | NumArgs Int [LispVal]
                | TypeMismatch String LispVal
                | BadSpecialForm String LispVal
-               | NotFunction String String
+               | NotFunction LispVal
                | UnboundVar String String
 
 showError :: LispError -> String
@@ -134,7 +134,7 @@ showError (NumArgs expected found) =
 showError (TypeMismatch expected found) =
     "Invalid type: expected " ++ expected ++ ", found " ++ show found
 showError (BadSpecialForm message form) = message ++ ": " ++ show form
-showError (NotFunction message func) = message ++ ": " ++ show func
+showError (NotFunction value) = "Not a function: " ++ show value
 showError (UnboundVar message varname) = message ++ ": " ++ varname
 
 instance Show LispError where show = showError
