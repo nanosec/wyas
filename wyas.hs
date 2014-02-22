@@ -124,7 +124,7 @@ data LispError = Default String
                | TypeMismatch String LispVal
                | BadSpecialForm String LispVal
                | NotFunction LispVal
-               | UnboundVar String String
+               | UnboundVar String
 
 showError :: LispError -> String
 showError (Default message) = message
@@ -135,7 +135,7 @@ showError (TypeMismatch expected found) =
     "Invalid type: expected " ++ expected ++ ", found " ++ show found
 showError (BadSpecialForm message form) = message ++ ": " ++ show form
 showError (NotFunction value) = "Not a function: " ++ show value
-showError (UnboundVar message varname) = message ++ ": " ++ varname
+showError (UnboundVar var) = "Unbound variable: " ++ var
 
 instance Show LispError where show = showError
 
@@ -170,7 +170,7 @@ actOnVar :: (IORef LispVal -> IOThrowsError LispVal) -> Env -> String ->
             IOThrowsError LispVal
 actOnVar f envRef var =
     do env <- liftIO $ readIORef envRef
-       maybe (throwError $ UnboundVar "Unbound variable" var) f (lookup var env)
+       maybe (throwError $ UnboundVar var) f (lookup var env)
 
 getVar :: Env -> String -> IOThrowsError LispVal
 getVar = actOnVar (liftIO . readIORef)
