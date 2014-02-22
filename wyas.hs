@@ -480,11 +480,11 @@ showVal (Number contents) = show contents
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
 showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
 showVal (PrimitiveFunc _) = "<primitive>"
-showVal (Func {params = args, vararg = varargs, body = body, closure = env}) =
-    "(lambda (" ++ argStr ++ varargStr ++ ") ...)"
-    where argStr = unwords (map show args)
-          varargStr = case varargs of Nothing -> ""
-                                      Just arg -> " . " ++ arg
+showVal (Func {params = params, vararg = vararg}) =
+    "(lambda (" ++ paramStr ++ varargStr ++ ") ...)"
+    where paramStr = unwords params
+          varargStr = case vararg of Nothing -> ""
+                                     Just arg -> " . " ++ arg
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
