@@ -262,19 +262,21 @@ eval env form@((List (Atom "case" : key : clauseList))) =
                  throwError $ BadSpecialForm "case: no true clause" form
              clauseRecur _ _ =
                  throwError $ BadSpecialForm "ill-formed case" form
-eval env (List (Atom "define" : rest)) =
+eval env form@(List (Atom "define" : rest)) =
     case rest of
       [Atom var, form] -> eval env form >>= defineVar env var
       (List (Atom var : params) : body) ->
           makeNormalFunc params body env >>= defineVar env var
       (DottedList (Atom var : params) vararg : body) ->
           makeVariadicFunc vararg params body env >>= defineVar env var
-eval env (List (Atom "lambda" : rest)) =
+      _ -> throwError $ BadSpecialForm "ill-formed define" form
+eval env form@(List (Atom "lambda" : rest)) =
     case rest of
       (List params : body) -> makeNormalFunc params body env
       (DottedList params vararg : body) ->
           makeVariadicFunc vararg params body env
       (vararg@(Atom _) : body) -> makeVariadicFunc vararg [] body env
+      _ -> throwError $ BadSpecialForm "ill-formed lambda" form
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
 eval env (List (function : args)) =
     do f <- eval env function
