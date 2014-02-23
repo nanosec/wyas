@@ -449,10 +449,10 @@ eqvalDotted eqvalFunc [DottedList xs x, DottedList ys y] =
          false -> return false
 
 eqv :: [LispVal] -> ThrowsError LispVal
-eqv [Atom arg1, Atom arg2] = return $ Bool $ arg1 == arg2
-eqv [Bool arg1, Bool arg2] = return $ Bool $ arg1 == arg2
-eqv [String arg1, String arg2] = return $ Bool $ arg1 == arg2
-eqv [Number arg1, Number arg2] = return $ Bool $ arg1 == arg2
+eqv [Atom arg1, Atom arg2] = return . Bool $ arg1 == arg2
+eqv [Bool arg1, Bool arg2] = return . Bool $ arg1 == arg2
+eqv [String arg1, String arg2] = return . Bool $ arg1 == arg2
+eqv [Number arg1, Number arg2] = return . Bool $ arg1 == arg2
 eqv arg@([List _, List _]) = eqvalList eqv arg
 eqv arg@([DottedList _ _, DottedList _ _]) = eqvalDotted eqv arg
 eqv [_, _] = return $ Bool False
