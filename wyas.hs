@@ -453,8 +453,8 @@ eqv [Atom arg1, Atom arg2] = return $ Bool $ arg1 == arg2
 eqv [Bool arg1, Bool arg2] = return $ Bool $ arg1 == arg2
 eqv [String arg1, String arg2] = return $ Bool $ arg1 == arg2
 eqv [Number arg1, Number arg2] = return $ Bool $ arg1 == arg2
-eqv arg@([List arg1, List arg2]) = eqvalList eqv arg
-eqv arg@([DottedList xs x, DottedList ys y]) = eqvalDotted eqv arg
+eqv arg@([List _, List _]) = eqvalList eqv arg
+eqv arg@([DottedList _ _, DottedList _ _]) = eqvalDotted eqv arg
 eqv [_, _] = return $ Bool False
 eqv badArgList = throwError $ NumArgs 2 badArgList
 
@@ -468,8 +468,8 @@ unpackEquals arg1 arg2 (AnyUnpacker unpacker) =
                       return $ unpacked1 == unpacked2
 
 equal :: [LispVal] -> ThrowsError LispVal
-equal arg@([List arg1, List arg2]) = eqvalList equal arg
-equal arg@([DottedList xs x, DottedList ys y]) = eqvalDotted equal arg
+equal arg@([List _, List _]) = eqvalList equal arg
+equal arg@([DottedList _ _, DottedList _ _]) = eqvalDotted equal arg
 equal [arg1, arg2] = do
   primitiveEquals <- liftM or $ mapM (unpackEquals arg1 arg2) anyUnpackers
   eqvEquals <- eqv [arg1, arg2]
