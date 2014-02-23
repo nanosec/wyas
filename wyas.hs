@@ -53,7 +53,8 @@ until_ pred prompt action = do
      else action result >> until_ pred prompt action
 
 runRepl :: IO ()
-runRepl = primitiveBindings >>= until_ (== "quit") (readPrompt "λ> ") . evalAndPrint
+runRepl = primitiveBindings >>=
+          until_ (== "quit") (readPrompt "λ> ") . evalAndPrint
 
 --Parsing
 
@@ -295,7 +296,8 @@ elem' x (y:ys) = do result <- eqv [x, y]
 extract :: LispVal -> String
 extract (Atom x) = x
 
-makeFunc :: (Maybe String) -> [LispVal] -> [LispVal] -> Env -> IOThrowsError LispVal
+makeFunc :: (Maybe String) -> [LispVal] -> [LispVal] -> Env ->
+            IOThrowsError LispVal
 makeFunc vararg params body env =
     return $ Func (map extract params) vararg body env
 
@@ -430,14 +432,16 @@ cdr [DottedList (_ : xs) x] = return $ DottedList xs x
 cdr [badArg] = throwError $ TypeMismatch "pair" badArg
 cdr badArgList = throwError $ NumArgs 1 badArgList
 
-eqvalList :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
-eqvalList eqvalFunc [List arg1, List arg2] =
-    return $ Bool $ (length arg1 == length arg2) && (all eqvalPair $ zip arg1 arg2)
-    where eqvalPair (x1, x2) = case eqvalFunc [x1, x2] of
-                                 Right (Bool val) -> val
-                                 Left err -> False
+eqvalList :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] ->
+             ThrowsError LispVal
+eqvalList eqvalFunc [List xs, List ys] =
+    return . Bool $ (length xs == length ys) && (all eqvalPair $ zip xs ys)
+    where eqvalPair (x, y) = case eqvalFunc [x, y] of
+                               Right (Bool val) -> val
+                               Left err -> False
 
-eqvalDotted :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
+eqvalDotted :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] ->
+               ThrowsError LispVal
 eqvalDotted eqvalFunc [DottedList xs x, DottedList ys y] =
     do lastEqval <- eqvalFunc [x,y]
        case lastEqval of
@@ -484,7 +488,8 @@ showVal (Bool False) = "#f"
 showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Number contents) = show contents
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
-showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
+showVal (DottedList head tail) =
+    "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
 showVal (PrimitiveFunc _) = "<primitive>"
 showVal (Func {params = params, vararg = vararg}) =
     "(lambda (" ++ paramStr ++ varargStr ++ ") ...)"
