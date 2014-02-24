@@ -32,18 +32,20 @@ main = do args <- getArgs
 flushStr :: String -> IO ()
 flushStr str = putStr str >> hFlush stdout
 
-readPrompt :: String -> IO String
-readPrompt prompt = flushStr prompt >> getLine
+promptInput :: String -> IO String
+promptInput prompt = flushStr prompt >> getLine
 
-evalString :: Env -> String -> IO String
-evalString env expr =
-    runIOThrows $ liftM show $ (liftThrows $ readExpr expr) >>= eval env
+readEval :: Env -> String -> IOThrowsError LispVal
+readEval env expr = (liftThrows $ readExpr expr) >>= eval env
 
-evalAndPrint :: Env -> String -> IO ()
-evalAndPrint env expr = evalString env expr >>= putStrLn
+printResult :: IOThrowsError LispVal -> IO ()
+printResult = (putStrLn =<<) . ioThrowsToIOString
+
+readEvalPrint :: Env -> String -> IO ()
+readEvalPrint env = printResult . readEval env
 
 runOne :: String -> IO ()
-runOne expr = primitiveBindings >>= flip evalAndPrint expr
+runOne expr = primitiveBindings >>= flip readEvalPrint expr
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
 until_ pred prompt action = do 
@@ -54,7 +56,7 @@ until_ pred prompt action = do
 
 runRepl :: IO ()
 runRepl = primitiveBindings >>=
-          until_ (== "quit") (readPrompt "λ> ") . evalAndPrint
+          until_ (== "quit") (promptInput "λ> ") . readEvalPrint
 
 --Parsing
 
@@ -144,18 +146,16 @@ instance Error LispError where
 
 type ThrowsError = Either LispError
 
-trapError action = catchError action (return . show)
-
-extractValue :: ThrowsError a -> a
-extractValue (Right val) = val
+extractAndShow :: ThrowsError LispVal -> String
+extractAndShow = either show show
 
 type IOThrowsError = ErrorT LispError IO
 
 liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows = either throwError return
 
-runIOThrows :: IOThrowsError String -> IO String
-runIOThrows action = runErrorT (trapError action) >>= return . extractValue
+ioThrowsToIOString :: IOThrowsError LispVal -> IO String
+ioThrowsToIOString = (return . extractAndShow =<<) . runErrorT
 
 --Environments
 
