@@ -12,9 +12,11 @@ data LispVal = Atom String
               | Bool Bool
               | String String
               | Number Integer
+              | Port Handle
               | List [LispVal]
               | DottedList [LispVal] LispVal
               | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
+              | IOFunc ([LispVal] -> IOThrowsError LispVal)
               | Func {params :: [String],
                       vararg :: (Maybe String),
                       body :: [LispVal],
@@ -487,10 +489,12 @@ showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
 showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Number contents) = show contents
+showVal (Port _) = "<IO port>"
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
 showVal (DottedList head tail) =
     "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
 showVal (PrimitiveFunc _) = "<primitive>"
+showVal (IOFunc _) = "<IO primitive>"
 showVal (Func {params = params, vararg = vararg}) =
     "(lambda (" ++ paramStr ++ varargStr ++ ") ...)"
     where paramStr = unwords params
