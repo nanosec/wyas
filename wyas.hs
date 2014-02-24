@@ -308,6 +308,7 @@ makeVariadicFunc = makeFunc . Just . extract
 
 apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
 apply (PrimitiveFunc func) args = liftThrows $ func args
+apply (IOFunc func) args = func args
 apply (Func params vararg body closure) args =
     if (numParams > numArgs) || (vararg == Nothing && numParams < numArgs)
        then throwError $ NumArgs numParams args
