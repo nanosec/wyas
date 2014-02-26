@@ -195,8 +195,10 @@ bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
 
 primitiveBindings :: IO Env
 primitiveBindings =
-    nullEnv >>= (flip bindVars $ map makePrimitiveFunc primitives)
-    where makePrimitiveFunc (var, func) = (var, PrimitiveFunc func)
+    nullEnv >>= flip bindVars allPrimitives
+    where allPrimitives = map (makeValue PrimitiveFunc) primitives
+                          ++ map (makeValue IOFunc) ioPrimitives
+          makeValue constructor (var, func) = (var, constructor func)
 
 --Evaluation
 
@@ -481,6 +483,9 @@ equal [arg1, arg2] = do
                         AnyUnpacker unpackStr,
                         AnyUnpacker unpackBool]
 equal badArgList = throwError $ NumArgs 2 badArgList
+
+ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
+ioPrimitives = []
 
 --instance Show
 
