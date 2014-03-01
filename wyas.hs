@@ -485,7 +485,34 @@ equal [arg1, arg2] = do
 equal badArgList = throwError $ NumArgs 2 badArgList
 
 ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
-ioPrimitives = []
+ioPrimitives = [("open-input-file", makePort ReadMode),
+                ("open-output-file", makePort WriteMode),
+                ("read", readProc),
+                ("write", writeProc),
+                ("close-input-port", closePort),
+                ("close-output-port", closePort)]
+
+makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
+makePort mode [String filename] = liftM Port . liftIO $ openFile filename mode
+makePort _ [notString] = throwError $ TypeMismatch "string" notString
+makePort _ badArgList = throwError $ NumArgs 1 badArgList
+
+readProc :: [LispVal] -> IOThrowsError LispVal
+readProc [] = readProc [Port stdin]
+readProc [Port port] = liftIO (hGetLine port) >>= liftThrows . readExpr
+readProc [notPort] = throwError $ TypeMismatch "port" notPort
+readProc badArgList = throwError $ NumArgs 1 badArgList
+
+writeProc :: [LispVal] -> IOThrowsError LispVal
+writeProc [obj] = writeProc [obj, Port stdout]
+writeProc [obj, Port port] = liftIO $ hPrint port obj >> return (Bool True)
+writeProc [_, notPort] = throwError $ TypeMismatch "port" notPort
+writeProc badArgList = throwError $ NumArgs 2 badArgList
+
+closePort :: [LispVal] -> IOThrowsError LispVal
+closePort [Port port] = liftIO $ hClose port >> return (Bool True)
+closePort [notPort] = throwError $ TypeMismatch "port" notPort
+closePort badArgList = throwError $ NumArgs 1 badArgList
 
 --instance Show
 
