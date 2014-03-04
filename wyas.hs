@@ -13,6 +13,7 @@ data LispVal = Atom String
               | String String
               | Number Integer
               | Port Handle
+              | EOF
               | List [LispVal]
               | DottedList [LispVal] LispVal
               | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
@@ -499,7 +500,11 @@ makePort _ badArgList = throwError $ NumArgs 1 badArgList
 
 readProc :: [LispVal] -> IOThrowsError LispVal
 readProc [] = readProc [Port stdin]
-readProc [Port port] = liftIO (hGetLine port) >>= liftThrows . readExpr
+readProc [Port port] =
+    do endOfFile <- liftIO $ hIsEOF port
+       if endOfFile
+          then return EOF
+          else liftIO (hGetLine port) >>= liftThrows . readExpr
 readProc [notPort] = throwError $ TypeMismatch "port" notPort
 readProc badArgList = throwError $ NumArgs 1 badArgList
 
@@ -523,6 +528,7 @@ showVal (Bool False) = "#f"
 showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Number contents) = show contents
 showVal (Port _) = "<IO port>"
+showVal EOF = "<eof>"
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
 showVal (DottedList head tail) =
     "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
