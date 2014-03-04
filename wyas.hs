@@ -459,6 +459,7 @@ eqv [Atom arg1, Atom arg2] = return . Bool $ arg1 == arg2
 eqv [Bool arg1, Bool arg2] = return . Bool $ arg1 == arg2
 eqv [String arg1, String arg2] = return . Bool $ arg1 == arg2
 eqv [Number arg1, Number arg2] = return . Bool $ arg1 == arg2
+eqv [EOF, EOF] = return $ Bool True
 eqv arg@([List _, List _]) = eqvalList eqv arg
 eqv arg@([DottedList _ _, DottedList _ _]) = eqvalDotted eqv arg
 eqv [_, _] = return $ Bool False
