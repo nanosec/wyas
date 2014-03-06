@@ -491,8 +491,18 @@ ioPrimitives = [("open-input-file", makePort ReadMode),
                 ("open-output-file", makePort WriteMode),
                 ("read", readProc),
                 ("write", writeProc),
-                ("close-input-port", closePort),
-                ("close-output-port", closePort)]
+                ("close-input-port", closePort ReadMode),
+                ("close-output-port", closePort WriteMode)]
+
+actOnPort :: IOMode -> Handle -> IOThrowsError LispVal -> IOThrowsError LispVal
+actOnPort mode port action =
+    do portIsXable <- liftIO $ hIsXable port
+       if portIsXable
+          then action
+          else throwError . TypeMismatch (portType ++ " port") $ Port port
+    where (hIsXable, portType) = case mode of
+                                   ReadMode -> (hIsReadable, "input")
+                                   WriteMode -> (hIsWritable, "output")
 
 makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
 makePort mode [String filename] = liftM Port . liftIO $ openFile filename mode
@@ -501,24 +511,26 @@ makePort _ badArgList = throwError $ NumArgs 1 badArgList
 
 readProc :: [LispVal] -> IOThrowsError LispVal
 readProc [] = readProc [Port stdin]
-readProc [Port port] =
-    do endOfFile <- liftIO $ hIsEOF port
-       if endOfFile
-          then return EOF
-          else liftIO (hGetLine port) >>= liftThrows . readExpr
-readProc [notPort] = throwError $ TypeMismatch "port" notPort
+readProc [Port port] = actOnPort ReadMode port action
+    where action = do isEOF <- liftIO $ hIsEOF port
+                      if isEOF
+                         then return EOF
+                         else liftIO (hGetLine port) >>= liftThrows . readExpr
+readProc [notPort] = throwError $ TypeMismatch "input port" notPort
 readProc badArgList = throwError $ NumArgs 1 badArgList
 
 writeProc :: [LispVal] -> IOThrowsError LispVal
 writeProc [obj] = writeProc [obj, Port stdout]
-writeProc [obj, Port port] = liftIO $ hPrint port obj >> return (Bool True)
-writeProc [_, notPort] = throwError $ TypeMismatch "port" notPort
+writeProc [obj, Port port] = actOnPort WriteMode port action
+    where action = liftIO $ hPrint port obj >> return (Bool True)
+writeProc [_, notPort] = throwError $ TypeMismatch "output port" notPort
 writeProc badArgList = throwError $ NumArgs 2 badArgList
 
-closePort :: [LispVal] -> IOThrowsError LispVal
-closePort [Port port] = liftIO $ hClose port >> return (Bool True)
-closePort [notPort] = throwError $ TypeMismatch "port" notPort
-closePort badArgList = throwError $ NumArgs 1 badArgList
+closePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
+closePort mode [Port port] = actOnPort mode port action
+    where action = liftIO $ hClose port >> return (Bool True)
+closePort _ [notPort] = throwError $ TypeMismatch "port" notPort
+closePort _ badArgList = throwError $ NumArgs 1 badArgList
 
 --instance Show
 
