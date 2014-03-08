@@ -4,6 +4,7 @@ module Main where
 import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment
 import System.IO
+import GHC.IO.Handle.Types
 import Control.Monad
 import Control.Monad.Error
 import Data.IORef
@@ -540,7 +541,10 @@ showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
 showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Number contents) = show contents
-showVal (Port _) = "<IO port>"
+showVal (Port port) = "<IO port: " ++ filePath ++ ">"
+    where filePath = case port of
+                       (FileHandle file _) -> file
+                       (DuplexHandle file _ _) -> file
 showVal EOF = "<eof>"
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
 showVal (DottedList head tail) =
