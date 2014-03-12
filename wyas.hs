@@ -536,8 +536,13 @@ writePort [_, notPort] = throwError $ TypeMismatch "output port" notPort
 writePort badArgList = throwError $ NumArgs 2 badArgList
 
 closePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
-closePort mode [Port port] = actOnPort mode port action
-    where action = liftCheckedIO $ hClose port >> return (Bool True)
+closePort mode [Port port] =
+    do isClosed <- liftCheckedIO $ hIsClosed port
+       if isClosed
+          then returnValue
+          else actOnPort mode port action
+    where action = liftCheckedIO (hClose port) >> returnValue
+          returnValue = return (Bool True)
 closePort _ [notPort] = throwError $ TypeMismatch "port" notPort
 closePort _ badArgList = throwError $ NumArgs 1 badArgList
 
