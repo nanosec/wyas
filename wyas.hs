@@ -40,14 +40,14 @@ flushStr str = putStr str >> hFlush stdout
 promptInput :: String -> IO String
 promptInput prompt = flushStr prompt >> getLine
 
-readEval :: Env -> String -> IOThrowsError LispVal
-readEval env expr = (liftThrows $ readExpr expr) >>= eval env
+readEval :: Env -> String -> IOThrowsError [LispVal]
+readEval env exprs = (liftThrows $ readExprs exprs) >>= evals env
 
-printResult :: IOThrowsError LispVal -> IO ()
-printResult = (putStrLn =<<) . ioThrowsToIOString
+printResults :: IOThrowsError [LispVal] -> IO ()
+printResults = (mapM_ putStrLn =<<) . ioThrowsToIOStrings
 
 readEvalPrint :: Env -> String -> IO ()
-readEvalPrint env = printResult . readEval env
+readEvalPrint env = printResults . readEval env
 
 runOne :: String -> IO ()
 runOne expr = primitiveBindings >>= flip readEvalPrint expr
@@ -65,8 +65,14 @@ runRepl = primitiveBindings >>=
 
 --Parsing
 
+readBy :: Parser a -> String -> ThrowsError a
+readBy p = either (throwError . Parser) return . parse p ""
+
 readExpr :: String -> ThrowsError LispVal
-readExpr = either (throwError . Parser) return . parse parseExpr ""
+readExpr = readBy parseExpr
+
+readExprs :: String -> ThrowsError [LispVal]
+readExprs = readBy parseExprs
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -122,6 +128,9 @@ parseExpr = parseAtom
             <|> parsePair
             <|> parseQuoted
 
+parseExprs :: Parser [LispVal]
+parseExprs = sepBy parseExpr spaces
+
 --Errors
 
 data LispError = Default String
@@ -151,16 +160,16 @@ instance Error LispError where
 
 type ThrowsError = Either LispError
 
-extractAndShow :: ThrowsError LispVal -> String
-extractAndShow = either show show
+extractAndShow :: ThrowsError [LispVal] -> [String]
+extractAndShow = either (\e -> [show e]) (map show)
 
 type IOThrowsError = ErrorT LispError IO
 
 liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows = either throwError return
 
-ioThrowsToIOString :: IOThrowsError LispVal -> IO String
-ioThrowsToIOString = (return . extractAndShow =<<) . runErrorT
+ioThrowsToIOStrings :: IOThrowsError [LispVal] -> IO [String]
+ioThrowsToIOStrings = (return . extractAndShow =<<) . runErrorT
 
 --Environments
 
@@ -290,8 +299,11 @@ eval env (List (function : args)) =
 eval env badForm =
     throwError $ BadSpecialForm "Unrecognized special form" badForm
 
+evals :: Env -> [LispVal] -> IOThrowsError [LispVal]
+evals = mapM . eval
+
 evalExprs :: Env -> [LispVal] -> IOThrowsError LispVal
-evalExprs env exprs = liftM last $ mapM (eval env) exprs
+evalExprs env = liftM last . evals env
 
 elem' :: LispVal -> [LispVal] -> ThrowsError Bool
 elem' _ [] = return False
