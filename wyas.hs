@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
 module Main where
-import Text.ParserCombinators.Parsec hiding (spaces)
+import Text.ParserCombinators.Parsec
 import System.Environment
 import System.IO
 import GHC.IO.Handle.Types
@@ -77,8 +77,8 @@ readExprs = readBy parseExprs
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 
-spaces :: Parser ()
-spaces = skipMany1 space
+spaces1 :: Parser ()
+spaces1 = skipMany1 space
 
 parseAtom :: Parser LispVal
 parseAtom = do
@@ -101,12 +101,12 @@ parseNumber :: Parser LispVal
 parseNumber = liftM (Number . read) $ many1 digit
 
 parseList :: Parser LispVal
-parseList = liftM List $ sepBy parseExpr spaces
+parseList = liftM List $ sepBy parseExpr spaces1
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
-  head <- endBy parseExpr spaces
-  tail <- char '.' >> spaces >> parseExpr
+  head <- endBy parseExpr spaces1
+  tail <- char '.' >> spaces1 >> parseExpr
   return $ DottedList head tail
 
 parsePair :: Parser LispVal
@@ -129,7 +129,7 @@ parseExpr = parseAtom
             <|> parseQuoted
 
 parseExprs :: Parser [LispVal]
-parseExprs = sepBy parseExpr spaces
+parseExprs = spaces >> endBy parseExpr spaces
 
 --Errors
 
