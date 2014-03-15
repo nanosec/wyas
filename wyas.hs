@@ -101,7 +101,7 @@ parseNumber :: Parser LispVal
 parseNumber = liftM (Number . read) $ many1 digit
 
 parseList :: Parser LispVal
-parseList = liftM List $ sepBy parseExpr spaces1
+parseList = liftM List parseExprs
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
