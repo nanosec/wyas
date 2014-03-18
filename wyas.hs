@@ -88,11 +88,7 @@ parseAtom = do
              _    -> Atom atom
 
 parseString :: Parser LispVal
-parseString = do
-  char '"'
-  x <- many (noneOf "\"")
-  char '"'
-  return $ String x
+parseString = liftM String . between (char '"') (char '"') $ many (noneOf "\"")
 
 parseNumber :: Parser LispVal
 parseNumber = liftM (Number . read) $ many1 digit
@@ -108,10 +104,7 @@ parseDottedList = do
   spaces >> return (DottedList (x:xs) tail)
 
 parsePair :: Parser LispVal
-parsePair = do char '('
-               x <- try parseDottedList <|> parseList
-               char ')'
-               return x
+parsePair = between (char '(') (char ')') $ try parseDottedList <|> parseList
 
 parseQuoted :: Parser LispVal
 parseQuoted = do
@@ -126,8 +119,10 @@ parseExpr = parseAtom
             <|> parsePair
             <|> parseQuoted
 
+sepBy' p sep = sep >> endBy p sep
+
 parseExprs :: Parser [LispVal]
-parseExprs = spaces >> endBy parseExpr spaces
+parseExprs = sepBy' parseExpr spaces
 
 --Errors
 
