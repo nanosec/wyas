@@ -77,9 +77,6 @@ readExprs = readBy parseExprs
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 
-spaces1 :: Parser ()
-spaces1 = skipMany1 space
-
 parseAtom :: Parser LispVal
 parseAtom = do
   first <- letter <|> symbol
@@ -105,13 +102,14 @@ parseList = liftM List parseExprs
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
-  head <- endBy parseExpr spaces1
-  tail <- char '.' >> spaces1 >> parseExpr
-  return $ DottedList head tail
+  x    <- spaces >> parseExpr
+  xs   <- manyTill (spaces >> parseExpr) (try $ spaces >> char '.')
+  tail <- spaces >> parseExpr
+  spaces >> return (DottedList (x:xs) tail)
 
 parsePair :: Parser LispVal
 parsePair = do char '('
-               x <- try parseList <|> parseDottedList
+               x <- try parseDottedList <|> parseList
                char ')'
                return x
 
