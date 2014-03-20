@@ -28,9 +28,8 @@ data LispVal = Atom String
 main :: IO ()
 main = do args <- getArgs
           case args of
-            []    -> runRepl
-            [arg] -> runFile arg
-            _     -> putStrLn "Program takes only 0 or 1 argument"
+            [] -> runRepl
+            _  -> mapM_ runFile args
 
 --REPL
 
