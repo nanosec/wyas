@@ -29,7 +29,7 @@ main :: IO ()
 main = do args <- getArgs
           case args of
             []    -> runRepl
-            [arg] -> runOne arg
+            [arg] -> runFile arg
             _     -> putStrLn "Program takes only 0 or 1 argument"
 
 --REPL
@@ -49,8 +49,8 @@ printResults = (mapM_ putStrLn =<<) . ioThrowsToIOStrings
 readEvalPrint :: Env -> String -> IO ()
 readEvalPrint env = printResults . readEval env
 
-runOne :: String -> IO ()
-runOne filename =
+runFile :: String -> IO ()
+runFile filename =
     primitiveBindings >>= flip readEvalPrint ("(load \"" ++ filename ++ "\")")
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
