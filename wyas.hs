@@ -50,7 +50,8 @@ readEvalPrint :: Env -> String -> IO ()
 readEvalPrint env = printResults . readEval env
 
 runOne :: String -> IO ()
-runOne expr = primitiveBindings >>= flip readEvalPrint expr
+runOne filename =
+    primitiveBindings >>= flip readEvalPrint ("(load \"" ++ filename ++ "\")")
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
 until_ pred prompt action = do 
