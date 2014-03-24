@@ -533,18 +533,16 @@ readPort [] = readPort [Port stdin undefined]
 readPort [Port port buffer] =
     do lispVals <- liftIO $ readIORef buffer
        case lispVals of
-         [] -> do nextVals <- actOnPort ReadMode port action
-                  case nextVals of
-                    [] -> readPort [Port port buffer]
-                    x:xs -> do liftIO $ writeIORef buffer xs
-                               return x
-         x:_ -> do liftIO $ modifyIORef buffer tail
-                   return x
-    where action = do isEOF <- liftCheckedIO $ hIsEOF port
-                      if isEOF
-                         then return [EOF]
-                         else liftCheckedIO (hGetLine port) >>=
-                              liftThrows . readExprs
+         [] -> actOnPort ReadMode port readLine >>=
+               liftIO . writeIORef buffer >>
+               readPort [Port port buffer]
+         x:xs -> liftIO $ writeIORef buffer xs >>
+                          return x
+    where readLine = do isEOF <- liftCheckedIO $ hIsEOF port
+                        if isEOF
+                           then return [EOF]
+                           else liftCheckedIO (hGetLine port) >>=
+                                liftThrows . readExprs
 readPort [notPort] = throwError $ TypeMismatch "input port" notPort
 readPort badArgList = throwError $ NumArgs 1 badArgList
 
