@@ -14,7 +14,8 @@ data LispVal = Atom String
               | Bool Bool
               | String String
               | Number Integer
-              | Port Handle
+              | Port {handle :: Handle,
+                      buffer :: IORef [LispVal]}
               | EOF
               | List [LispVal]
               | DottedList [LispVal] LispVal
@@ -508,42 +509,54 @@ liftCheckedIO action =
     liftIO (Ex.try action) >>=
     either (\e -> throwError . Default $ show (e :: Ex.IOException)) return
 
-actOnPort :: IOMode -> Handle -> IOThrowsError LispVal -> IOThrowsError LispVal
+actOnPort :: IOMode -> Handle -> IOThrowsError a -> IOThrowsError a
 actOnPort mode port action =
     do portIsXable <- liftCheckedIO $ hIsXable port
        if portIsXable
           then action
-          else throwError . TypeMismatch (portType ++ " port") $ Port port
+          else throwError $ TypeMismatch (portType ++ " port")
+                                         (Port port undefined)
     where (hIsXable, portType) = case mode of
                                    ReadMode -> (hIsReadable, "input")
                                    WriteMode -> (hIsWritable, "output")
 
 makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
 makePort mode [String filename] =
-    liftM Port . liftCheckedIO $ openFile filename mode
+    do port <- liftCheckedIO $ openFile filename mode
+       buffer <- liftIO $ newIORef []
+       return $ Port port buffer
 makePort _ [notString] = throwError $ TypeMismatch "string" notString
 makePort _ badArgList = throwError $ NumArgs 1 badArgList
 
 readPort :: [LispVal] -> IOThrowsError LispVal
-readPort [] = readPort [Port stdin]
-readPort [Port port] = actOnPort ReadMode port action
+readPort [] = readPort [Port stdin undefined]
+readPort [Port port buffer] =
+    do lispVals <- liftIO $ readIORef buffer
+       case lispVals of
+         [] -> do nextVals <- actOnPort ReadMode port action
+                  case nextVals of
+                    [] -> readPort [Port port buffer]
+                    x:xs -> do liftIO $ writeIORef buffer xs
+                               return x
+         x:_ -> do liftIO $ modifyIORef buffer tail
+                   return x
     where action = do isEOF <- liftCheckedIO $ hIsEOF port
                       if isEOF
-                         then return EOF
+                         then return [EOF]
                          else liftCheckedIO (hGetLine port) >>=
-                              liftThrows . readExpr
+                              liftThrows . readExprs
 readPort [notPort] = throwError $ TypeMismatch "input port" notPort
 readPort badArgList = throwError $ NumArgs 1 badArgList
 
 writePort :: [LispVal] -> IOThrowsError LispVal
-writePort [obj] = writePort [obj, Port stdout]
-writePort [obj, Port port] = actOnPort WriteMode port action
+writePort [obj] = writePort [obj, Port stdout undefined]
+writePort [obj, Port port _] = actOnPort WriteMode port action
     where action = liftCheckedIO $ hPrint port obj >> return (Bool True)
 writePort [_, notPort] = throwError $ TypeMismatch "output port" notPort
 writePort badArgList = throwError $ NumArgs 2 badArgList
 
 closePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
-closePort mode [Port port] =
+closePort mode [Port port _] =
     do isClosed <- liftCheckedIO $ hIsClosed port
        if isClosed
           then returnValue
@@ -561,7 +574,7 @@ showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
 showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Number contents) = show contents
-showVal (Port port) = "<IO port: " ++ filePath ++ ">"
+showVal (Port port _) = "<IO port: " ++ filePath ++ ">"
     where filePath = case port of
                        (FileHandle file _) -> file
                        (DuplexHandle file _ _) -> file
