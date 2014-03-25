@@ -5,6 +5,7 @@ import Text.ParserCombinators.Parsec
 import System.Environment
 import System.IO
 import GHC.IO.Handle.Types
+import Control.Applicative ((<$>), (<*>))
 import Control.Monad
 import Control.Monad.Error
 import qualified Control.Exception as Ex
@@ -206,7 +207,8 @@ bindVars envRef = liftM last . mapM (bindVar envRef)
 
 primitiveBindings :: IO Env
 primitiveBindings =
-    nullEnv >>= flip bindVars allPrimitives
+    (join $ bindVar <$> nullEnv <*> stdinPort) >>=
+    flip bindVars allPrimitives
     where allPrimitives = map (makeValue PrimitiveFunc) primitives
                           ++ map (makeValue IOFunc) ioPrimitives
           makeValue constructor (var, func) = (var, constructor func)
@@ -293,6 +295,7 @@ eval env form@(List (Atom "lambda" : rest)) =
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
 eval env (List [Atom "load", String filename]) =
     (liftIO $ readFile filename) >>= liftThrows . readExprs >>= evalExprs env
+eval env (List [Atom "read"]) = readStdin env
 eval env (List (function : args)) =
     do f <- eval env function
        xs <- mapM (eval env) args
@@ -533,8 +536,16 @@ makePort mode [String filename] =
 makePort _ [notString] = throwError $ TypeMismatch "string" notString
 makePort _ badArgList = throwError $ NumArgs 1 badArgList
 
+stdinVar = "#stdin"
+
+stdinPort :: IO (String, LispVal)
+stdinPort = do buffer <- newIORef []
+               return (stdinVar, Port stdin buffer)
+
+readStdin :: Env -> IOThrowsError LispVal
+readStdin env = getVar env stdinVar >>= readPort . (:[])
+
 readPort :: [LispVal] -> IOThrowsError LispVal
-readPort [] = readPort [Port stdin undefined]
 readPort [Port port buffer] =
     do lispVals <- liftIO $ readIORef buffer
        case lispVals of
