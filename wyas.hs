@@ -193,11 +193,16 @@ defineVar envRef var value =
                                   modifyIORef envRef ((var, valueRef):)
                                   return value
 
+bindVar :: Env -> (String, LispVal) -> IO Env
+bindVar envRef assoc =
+    do binding <- makeBinding assoc
+       modifyIORef envRef (binding:)
+       return envRef
+    where makeBinding (var, value) = do ref <- newIORef value
+                                        return (var, ref)
+
 bindVars :: Env -> [(String, LispVal)] -> IO Env
-bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
-    where extendEnv bindings env = liftM (++ env) (mapM addBinding bindings)
-          addBinding (var, value) = do ref <- newIORef value
-                                       return (var, ref)
+bindVars envRef = liftM last . mapM (bindVar envRef)
 
 primitiveBindings :: IO Env
 primitiveBindings =
