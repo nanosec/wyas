@@ -10,6 +10,7 @@ import Control.Monad
 import Control.Monad.Error
 import qualified Control.Exception as Ex
 import Data.IORef
+import Data.List
 
 data LispVal = Atom String
               | Bool Bool
@@ -558,7 +559,15 @@ readPort [Port port buffer] =
                         if isEOF
                            then return [EOF]
                            else liftCheckedIO (hGetLine port) >>=
-                                liftThrows . readExprs
+                                readCompleteExprs
+          readCompleteExprs line1 =
+              liftThrows (readExprs line1) `catchError` maybeReadMore
+              where maybeReadMore err@(Parser e) =
+                        if "unexpected end of input" `isInfixOf` show e
+                           then do line2 <- liftCheckedIO $ hGetLine port
+                                   readCompleteExprs $ line1 ++ line2
+                           else throwError err
+                    maybeReadMore _ = error "readPort: unexpected error"
 readPort [notPort] = throwError $ TypeMismatch "input port" notPort
 readPort badArgList = throwError $ NumArgs 1 badArgList
 
