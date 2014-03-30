@@ -555,19 +555,23 @@ readPort [Port port buffer] =
                readPort [Port port buffer]
          x:xs -> liftIO $ writeIORef buffer xs >>
                           return x
-    where readLine = do isEOF <- liftCheckedIO $ hIsEOF port
-                        if isEOF
-                           then return [EOF]
-                           else liftCheckedIO (hGetLine port) >>=
-                                readCompleteExprs
-          readCompleteExprs line1 =
+    where ifEOF conseq alt = do isEOF <- liftCheckedIO $ hIsEOF port
+                                if isEOF then conseq else alt
+          readLine = ifEOF (return [EOF])
+                           (do line <- liftCheckedIO $ hGetLine port
+                               readCompleteExprs line line)
+          readCompleteExprs line1 errorLine =
               liftThrows (readExprs line1) `catchError` maybeReadMore
               where maybeReadMore err@(Parser e) =
                         if "unexpected end of input" `isInfixOf` show e
-                           then do line2 <- liftCheckedIO $ hGetLine port
-                                   readCompleteExprs $ line1 ++ line2
+                           then ifEOF (throwError $ Default incompleteExprMsg)
+                                      (do line2 <- liftCheckedIO $ hGetLine port
+                                          readCompleteExprs (line1 ++ line2)
+                                                            errorLine)
                            else throwError err
                     maybeReadMore _ = error "readPort: unexpected error"
+                    incompleteExprMsg =
+                        "Incomplete expression starting at line: " ++ errorLine
 readPort [notPort] = throwError $ TypeMismatch "input port" notPort
 readPort badArgList = throwError $ NumArgs 1 badArgList
 
