@@ -97,7 +97,7 @@ parseNumber :: Parser LispVal
 parseNumber = liftM (Number . read) $ many1 digit
 
 parseList :: Parser LispVal
-parseList = liftM List parseExprs
+parseList = liftM List parseExprs'
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
@@ -122,10 +122,17 @@ parseExpr = parseAtom
             <|> parsePair
             <|> parseQuoted
 
-sepBy' p sep = sep >> endBy p sep
+parseExprs' :: Parser [LispVal]
+parseExprs' = sepBy' parseExpr spaces
+    where sepBy' p sep = sep >> endBy p sep
 
 parseExprs :: Parser [LispVal]
-parseExprs = sepBy' parseExpr spaces
+parseExprs =
+    do x <- parseExprs'
+       endOfInput <|> illegalChar
+       return x
+    where endOfInput = eof >> return []
+          illegalChar = anyChar >>= unexpected . show
 
 --Errors
 
