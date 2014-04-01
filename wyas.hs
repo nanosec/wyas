@@ -315,7 +315,8 @@ evals :: Env -> [LispVal] -> IOThrowsError [LispVal]
 evals = mapM . eval
 
 evalExprs :: Env -> [LispVal] -> IOThrowsError LispVal
-evalExprs env = liftM last . evals env
+evalExprs _ [] = throwError $ Default "No expressions to evaluate"
+evalExprs env exprs = liftM last $ evals env exprs
 
 elem' :: LispVal -> [LispVal] -> ThrowsError Bool
 elem' _ [] = return False
