@@ -577,7 +577,8 @@ readPort [Port port buffer] =
                                           readCompleteExprs (line1 ++ line2)
                                                             errorLine)
                            else throwError err
-                    maybeReadMore _ = error "readPort: unexpected error"
+                    maybeReadMore _ =
+                        throwError $ Default "readPort: unexpected error"
                     incompleteExprMsg =
                         "Incomplete expression starting at line: " ++ errorLine
 readPort [notPort] = throwError $ TypeMismatch "input port" notPort
