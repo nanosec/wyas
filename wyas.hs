@@ -401,27 +401,29 @@ unpackNum (String n) = let parsed = reads n
 unpackNum (List [n]) = unpackNum n
 unpackNum notNum = throwError $ TypeMismatch "number" notNum
 
-unaryOp :: (LispVal -> LispVal) -> [LispVal] -> ThrowsError LispVal
-unaryOp _ [] = throwError $ NumArgs 1 []
-unaryOp op [arg] = return $ op arg
+unaryOp :: (LispVal -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
+unaryOp op [arg] = op arg
+unaryOp _ args = throwError $ NumArgs 1 args
 
-symbolPred :: LispVal -> LispVal
-symbolPred (Atom _) = Bool True
-symbolPred _ = Bool False
+symbolPred :: LispVal -> ThrowsError LispVal
+symbolPred (Atom _) = return $ Bool True
+symbolPred _        = return $ Bool False
 
-stringPred :: LispVal -> LispVal
-stringPred (String _) = Bool True
-stringPred _ = Bool False
+stringPred :: LispVal -> ThrowsError LispVal
+stringPred (String _) = return $ Bool True
+stringPred _          = return $ Bool False
 
-numberPred :: LispVal -> LispVal
-numberPred (Number _) = Bool True
-numberPred _ = Bool False
+numberPred :: LispVal -> ThrowsError LispVal
+numberPred (Number _) = return $ Bool True
+numberPred _          = return $ Bool False
 
-symbolToString :: LispVal -> LispVal
-symbolToString (Atom s) = String s
+symbolToString :: LispVal -> ThrowsError LispVal
+symbolToString (Atom s) = return $ String s
+symbolToString notSymbol = throwError $ TypeMismatch "symbol" notSymbol
 
-stringToSymbol :: LispVal -> LispVal
-stringToSymbol (String s) = Atom s
+stringToSymbol :: LispVal -> ThrowsError LispVal
+stringToSymbol (String s) = return $ Atom s
+stringToSymbol notString = throwError $ TypeMismatch "string" notString
 
 boolOp :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
           ThrowsError LispVal
