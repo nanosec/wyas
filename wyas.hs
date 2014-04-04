@@ -383,9 +383,8 @@ primitives = [("+", numericOp (+)),
               ("equal?", equal)]
 
 numericOp :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
-numericOp _ [] = throwError $ NumArgs 2 []
-numericOp _ arg@[_] = throwError $ NumArgs 2 arg
-numericOp op args = mapM unpackNum args >>= return . Number . foldl1 op
+numericOp op args@(_:_:_) = mapM unpackNum args >>= return . Number . foldl1 op
+numericOp _ args = throwError $ NumArgs 2 args
 
 numericBinop :: (Integer -> Integer -> Integer) ->
                 [LispVal] -> ThrowsError LispVal
