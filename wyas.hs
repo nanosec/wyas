@@ -612,19 +612,19 @@ showVal :: LispVal -> String
 showVal (Atom name) = name
 showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
-showVal (String contents) = "\"" ++ contents ++ "\""
-showVal (Number contents) = show contents
+showVal (String str) = "\"" ++ str ++ "\""
+showVal (Number num) = show num
 showVal (Port port _) = "<IO port: " ++ filePath ++ ">"
     where filePath = case port of
                        (FileHandle file _) -> file
                        (DuplexHandle file _ _) -> file
 showVal EOF = "<eof>"
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
-showVal (DottedList head tail) =
-    "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
+showVal (DottedList init last) =
+    "(" ++ unwordsList init ++ " . " ++ showVal last ++ ")"
 showVal (PrimitiveFunc _) = "<primitive>"
 showVal (IOFunc _) = "<IO primitive>"
-showVal (Func {params = params, vararg = vararg}) =
+showVal (Func params vararg _ _) =
     "(lambda (" ++ paramStr ++ varargStr ++ ") ...)"
     where paramStr = unwords params
           varargStr = case vararg of Nothing -> ""
