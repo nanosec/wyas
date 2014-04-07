@@ -325,16 +325,20 @@ elem' x (y:ys) = do result <- eqv [x, y]
                       Bool True -> return True
                       _ -> elem' x ys
 
-extract :: LispVal -> String
-extract (Atom x) = x
+fromAtom :: LispVal -> ThrowsError String
+fromAtom (Atom x) = return x
+fromAtom notVar = throwError $ TypeMismatch "variable" notVar
 
 makeFunc :: (Maybe String) -> [LispVal] -> [LispVal] -> Env ->
             IOThrowsError LispVal
 makeFunc vararg params body env =
-    return $ Func (map extract params) vararg body env
+    do params' <- liftThrows $ mapM fromAtom params
+       return $ Func params' vararg body env
 
 makeNormalFunc = makeFunc Nothing
-makeVariadicFunc = makeFunc . Just . extract
+makeVariadicFunc vararg params body env =
+    do vararg' <- liftThrows $ fromAtom vararg
+       makeFunc (Just vararg') params body env
 
 apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
 apply (PrimitiveFunc func) args = liftThrows $ func args
