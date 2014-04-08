@@ -624,6 +624,7 @@ showVal (DottedList init last) =
     "(" ++ unwordsList init ++ " . " ++ showVal last ++ ")"
 showVal (PrimitiveFunc _) = "<primitive>"
 showVal (IOFunc _) = "<IO primitive>"
+showVal (Func [] (Just vararg) _ _) = "(lambda " ++ vararg ++ " ...)"
 showVal (Func params vararg _ _) =
     "(lambda (" ++ paramStr ++ varargStr ++ ") ...)"
     where paramStr = unwords params
