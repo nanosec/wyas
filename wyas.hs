@@ -138,7 +138,7 @@ parseExprs =
 
 data LispError = Default String
                | Parser ParseError
-               | NumArgs Int [LispVal]
+               | NumArgs String [LispVal]
                | TypeMismatch String LispVal
                | BadSpecialForm String LispVal
                | NotFunction LispVal
@@ -147,8 +147,10 @@ data LispError = Default String
 showError :: LispError -> String
 showError (Default message) = message
 showError (Parser parseErr) = "Parse error at " ++ show parseErr
-showError (NumArgs expected found) =
-    "Expected " ++ show expected ++ " args; found values " ++ unwordsList found
+showError (NumArgs range given) =
+    "Arity mismatch: expected " ++ range ++ " argument(s), given " ++ values
+    where values = case given of [] -> "none"
+                                 _  -> "value(s) " ++ unwordsList given
 showError (TypeMismatch expected found) =
     "Invalid type: expected " ++ expected ++ ", found " ++ show found
 showError (BadSpecialForm message form) = message ++ ": " ++ show form
@@ -345,7 +347,7 @@ apply (PrimitiveFunc func) args = liftThrows $ func args
 apply (IOFunc func) args = func args
 apply (Func params vararg body closure) args =
     if (numParams > numArgs) || (vararg == Nothing && numParams < numArgs)
-       then throwError $ NumArgs numParams args
+       then throwError $ NumArgs (show numParams) args
        else (liftIO $ bindVars closure argBindings) >>= flip evalExprs body
     where numParams = length params
           numArgs = length args
@@ -388,12 +390,12 @@ primitives = [("+", numericOp (+)),
 
 numericOp :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericOp op args@(_:_:_) = mapM unpackNum args >>= return . Number . foldl1 op
-numericOp _ args = throwError $ NumArgs 2 args
+numericOp _ args = throwError $ NumArgs "> 1" args
 
 numericBinop :: (Integer -> Integer -> Integer) ->
                 [LispVal] -> ThrowsError LispVal
 numericBinop op args@[_,_] = numericOp op args
-numericBinop _ args = throwError $ NumArgs 2 args
+numericBinop _ args = throwError $ NumArgs "2" args
 
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n
@@ -406,7 +408,7 @@ unpackNum notNum = throwError $ TypeMismatch "number" notNum
 
 unaryOp :: (LispVal -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
 unaryOp op [arg] = op arg
-unaryOp _ args = throwError $ NumArgs 1 args
+unaryOp _ args = throwError $ NumArgs "1" args
 
 symbolPred :: LispVal -> ThrowsError LispVal
 symbolPred (Atom _) = return $ Bool True
@@ -430,8 +432,8 @@ stringToSymbol notString = throwError $ TypeMismatch "string" notString
 
 boolOp :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
           ThrowsError LispVal
-boolOp _ _ [] = throwError $ NumArgs 2 []
-boolOp _ _ arg@[_] = throwError $ NumArgs 2 arg
+boolOp _ _ [] = throwError $ NumArgs "2" []
+boolOp _ _ arg@[_] = throwError $ NumArgs "2" arg
 boolOp unpacker op args = do
   unpackedArgs <- mapM unpacker args
   return . Bool . and $ zipWith op unpackedArgs (tail unpackedArgs)
@@ -454,20 +456,20 @@ cons :: [LispVal] -> ThrowsError LispVal
 cons [x, List xs] = return $ List (x:xs)
 cons [x, DottedList xs xlast] = return $ DottedList (x:xs) xlast
 cons [x1, x2] = return $ DottedList [x1] x2
-cons badArgList = throwError $ NumArgs 2 badArgList
+cons badArgList = throwError $ NumArgs "2" badArgList
 
 car :: [LispVal] -> ThrowsError LispVal
 car [List (x:_)] = return x
 car [DottedList (x:_) _] = return x
 car [badArg] = throwError $ TypeMismatch "non-empty list" badArg
-car badArgList = throwError $ NumArgs 1 badArgList
+car badArgList = throwError $ NumArgs "1" badArgList
 
 cdr :: [LispVal] -> ThrowsError LispVal
 cdr [List (_:xs)] = return $ List xs
 cdr [DottedList [_] x] = return x
 cdr [DottedList (_:xs) x] = return $ DottedList xs x
 cdr [badArg] = throwError $ TypeMismatch "non-empty list" badArg
-cdr badArgList = throwError $ NumArgs 1 badArgList
+cdr badArgList = throwError $ NumArgs "1" badArgList
 
 eqvalList :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] ->
              ThrowsError LispVal
@@ -494,7 +496,7 @@ eqv [EOF, EOF] = return $ Bool True
 eqv arg@([List _, List _]) = eqvalList eqv arg
 eqv arg@([DottedList _ _, DottedList _ _]) = eqvalDotted eqv arg
 eqv [_, _] = return $ Bool False
-eqv badArgList = throwError $ NumArgs 2 badArgList
+eqv badArgList = throwError $ NumArgs "2" badArgList
 
 data Unpacker = forall a. Eq a => AnyUnpacker (LispVal -> ThrowsError a)
 
@@ -515,7 +517,7 @@ equal [arg1, arg2] = do
   where anyUnpackers = [AnyUnpacker unpackNum,
                         AnyUnpacker unpackStr,
                         AnyUnpacker unpackBool]
-equal badArgList = throwError $ NumArgs 2 badArgList
+equal badArgList = throwError $ NumArgs "2" badArgList
 
 ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
 ioPrimitives = [("open-input-file", makePort ReadMode),
@@ -547,7 +549,7 @@ makePort mode [String filename] =
        buffer <- liftIO $ newIORef []
        return $ Port port buffer
 makePort _ [notString] = throwError $ TypeMismatch "string" notString
-makePort _ badArgList = throwError $ NumArgs 1 badArgList
+makePort _ badArgList = throwError $ NumArgs "1" badArgList
 
 stdinVar = "#stdin"
 
@@ -586,14 +588,14 @@ readPort [Port port buffer] =
                     incompleteExprMsg =
                         "Incomplete expression starting at line: " ++ errorLine
 readPort [notPort] = throwError $ TypeMismatch "input port" notPort
-readPort badArgList = throwError $ NumArgs 1 badArgList
+readPort badArgList = throwError $ NumArgs "0 or 1" badArgList
 
 writePort :: [LispVal] -> IOThrowsError LispVal
 writePort [obj] = writePort [obj, Port stdout undefined]
 writePort [obj, Port port _] = actOnPort WriteMode port action
     where action = liftCheckedIO $ hPrint port obj >> return (Bool True)
 writePort [_, notPort] = throwError $ TypeMismatch "output port" notPort
-writePort badArgList = throwError $ NumArgs 2 badArgList
+writePort badArgList = throwError $ NumArgs "1 or 2" badArgList
 
 closePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
 closePort mode [Port port _] =
@@ -604,7 +606,7 @@ closePort mode [Port port _] =
     where action = liftCheckedIO (hClose port) >> returnValue
           returnValue = return (Bool True)
 closePort _ [notPort] = throwError $ TypeMismatch "port" notPort
-closePort _ badArgList = throwError $ NumArgs 1 badArgList
+closePort _ badArgList = throwError $ NumArgs "1" badArgList
 
 --instance Show
 
