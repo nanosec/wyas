@@ -432,11 +432,10 @@ stringToSymbol notString = throwError $ TypeMismatch "string" notString
 
 boolOp :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
           ThrowsError LispVal
-boolOp _ _ [] = throwError $ NumArgs "2" []
-boolOp _ _ arg@[_] = throwError $ NumArgs "2" arg
-boolOp unpacker op args = do
+boolOp unpacker op args@(_:_:_) = do
   unpackedArgs <- mapM unpacker args
   return . Bool . and $ zipWith op unpackedArgs (tail unpackedArgs)
+boolOp _ _ arg = throwError $ NumArgs "> 1" arg
 
 numBoolOp = boolOp unpackNum
 strBoolOp = boolOp unpackStr
