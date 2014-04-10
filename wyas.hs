@@ -263,9 +263,11 @@ eval env form@((List (Atom "cond" : clauseList))) =
                 _ -> do result <- eval env test
                         case result of
                           Bool False -> clauseRecur rest
-                          _ -> if null exprs
-                                  then return result
-                                  else evalExprs env exprs
+                          _ -> case exprs of
+                                 [] -> return result
+                                 [Atom "=>", expr] -> eval env expr >>=
+                                                      flip apply [result]
+                                 _ -> evalExprs env exprs
           clauseRecur [] =
               throwError $ BadSpecialForm "cond: no true clause" form
           clauseRecur _ = throwError $ BadSpecialForm "ill-formed cond" form
