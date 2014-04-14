@@ -1,5 +1,3 @@
-{-# LANGUAGE ExistentialQuantification #-}
-
 module Main where
 import Text.ParserCombinators.Parsec
 import System.Environment
@@ -387,11 +385,10 @@ primitives = [("+", numericOp (+)),
               ("cons", cons),
               ("car", car),
               ("cdr", cdr),
-              ("eqv?", eqv),
-              ("equal?", equal)]
+              ("eqv?", eqv)]
 
 numericOp :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
-numericOp op args@(_:_:_) = mapM unpackNum args >>= return . Number . foldl1 op
+numericOp op args@(_:_:_) = mapM fromNumber args >>= return . Number . foldl1 op
 numericOp _ args = throwError $ NumArgs "> 1" args
 
 numericBinop :: (Integer -> Integer -> Integer) ->
@@ -399,14 +396,9 @@ numericBinop :: (Integer -> Integer -> Integer) ->
 numericBinop op args@[_,_] = numericOp op args
 numericBinop _ args = throwError $ NumArgs "2" args
 
-unpackNum :: LispVal -> ThrowsError Integer
-unpackNum (Number n) = return n
-unpackNum (String n) = let parsed = reads n
-                       in if null parsed
-                             then throwError $ TypeMismatch "number" $ String n
-                             else return $ fst $ parsed !! 0
-unpackNum (List [n]) = unpackNum n
-unpackNum notNum = throwError $ TypeMismatch "number" notNum
+fromNumber :: LispVal -> ThrowsError Integer
+fromNumber (Number num) = return num
+fromNumber notNum = throwError $ TypeMismatch "number" notNum
 
 unaryOp :: (LispVal -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
 unaryOp op [arg] = op arg
@@ -434,24 +426,17 @@ stringToSymbol notString = throwError $ TypeMismatch "string" notString
 
 boolOp :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
           ThrowsError LispVal
-boolOp unpacker op args@(_:_:_) = do
-  unpackedArgs <- mapM unpacker args
-  return . Bool . and $ zipWith op unpackedArgs (tail unpackedArgs)
+boolOp extractor op args@(_:_:_) =
+    do args' <- mapM extractor args
+       return . Bool . and . zipWith op args' $ tail args'
 boolOp _ _ arg = throwError $ NumArgs "> 1" arg
 
-numBoolOp = boolOp unpackNum
-strBoolOp = boolOp unpackStr
-boolBoolOp = boolOp unpackBool
+numBoolOp = boolOp fromNumber
+strBoolOp = boolOp fromString
 
-unpackStr :: LispVal -> ThrowsError String
-unpackStr (String s) = return s
-unpackStr (Number s) = return $ show s
-unpackStr (Bool s) = return $ show s
-unpackStr notString = throwError $ TypeMismatch "string" notString
-
-unpackBool :: LispVal -> ThrowsError Bool
-unpackBool (Bool b) = return b
-unpackBool notBool = throwError $ TypeMismatch "boolean" notBool
+fromString :: LispVal -> ThrowsError String
+fromString (String str) = return str
+fromString notString = throwError $ TypeMismatch "string" notString
 
 cons :: [LispVal] -> ThrowsError LispVal
 cons [x, List xs] = return $ List (x:xs)
@@ -498,27 +483,6 @@ eqv arg@([List _, List _]) = eqvalList eqv arg
 eqv arg@([DottedList _ _, DottedList _ _]) = eqvalDotted eqv arg
 eqv [_, _] = return $ Bool False
 eqv badArgList = throwError $ NumArgs "2" badArgList
-
-data Unpacker = forall a. Eq a => AnyUnpacker (LispVal -> ThrowsError a)
-
-unpackEquals :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
-unpackEquals arg1 arg2 (AnyUnpacker unpacker) =
-    result `catchError` (const $ return False)
-    where result = do unpacked1 <- unpacker arg1
-                      unpacked2 <- unpacker arg2
-                      return $ unpacked1 == unpacked2
-
-equal :: [LispVal] -> ThrowsError LispVal
-equal arg@([List _, List _]) = eqvalList equal arg
-equal arg@([DottedList _ _, DottedList _ _]) = eqvalDotted equal arg
-equal [arg1, arg2] = do
-  primitiveEquals <- liftM or $ mapM (unpackEquals arg1 arg2) anyUnpackers
-  eqvEquals <- eqv [arg1, arg2]
-  return $ Bool $ (primitiveEquals || let (Bool x) = eqvEquals in x)
-  where anyUnpackers = [AnyUnpacker unpackNum,
-                        AnyUnpacker unpackStr,
-                        AnyUnpacker unpackBool]
-equal badArgList = throwError $ NumArgs "2" badArgList
 
 ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
 ioPrimitives = [("open-input-file", makePort ReadMode),
