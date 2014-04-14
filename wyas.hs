@@ -322,7 +322,7 @@ evalExprs env exprs = liftM last $ evals env exprs
 
 elem' :: LispVal -> [LispVal] -> ThrowsError Bool
 elem' _ [] = return False
-elem' x (y:ys) = do result <- eqv [x, y]
+elem' x (y:ys) = do result <- equal [x, y]
                     case result of
                       Bool True -> return True
                       _ -> elem' x ys
@@ -385,7 +385,7 @@ primitives = [("+", numericOp (+)),
               ("cons", cons),
               ("car", car),
               ("cdr", cdr),
-              ("eqv?", eqv)]
+              ("equal?", equal)]
 
 numericOp :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericOp op args@(_:_:_) = mapM fromNumber args >>= return . Number . foldl1 op
@@ -457,32 +457,24 @@ cdr [DottedList (_:xs) x] = return $ DottedList xs x
 cdr [badArg] = throwError $ TypeMismatch "non-empty list" badArg
 cdr badArgList = throwError $ NumArgs "1" badArgList
 
-eqvalList :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] ->
-             ThrowsError LispVal
-eqvalList eqvalFunc [List xs, List ys] =
-    return . Bool $ (length xs == length ys) && (all eqvalPair $ zip xs ys)
-    where eqvalPair (x, y) = case eqvalFunc [x, y] of
+equal :: [LispVal] -> ThrowsError LispVal
+equal [Atom arg1, Atom arg2] = return . Bool $ arg1 == arg2
+equal [Bool arg1, Bool arg2] = return . Bool $ arg1 == arg2
+equal [String arg1, String arg2] = return . Bool $ arg1 == arg2
+equal [Number arg1, Number arg2] = return . Bool $ arg1 == arg2
+equal [EOF, EOF] = return $ Bool True
+equal arg@([List xs, List ys]) =
+    return . Bool $ (length xs == length ys) && (all equalPair $ zip xs ys)
+    where equalPair (x, y) = case equal [x, y] of
                                Right (Bool val) -> val
                                Left err -> False
-
-eqvalDotted :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] ->
-               ThrowsError LispVal
-eqvalDotted eqvalFunc [DottedList xs x, DottedList ys y] =
-    do lastEqval <- eqvalFunc [x,y]
-       case lastEqval of
-         Bool True -> eqvalFunc [List xs, List ys]
+equal arg@([DottedList xs x, DottedList ys y]) =
+    do lastEqual <- equal [x,y]
+       case lastEqual of
+         Bool True -> equal [List xs, List ys]
          false -> return false
-
-eqv :: [LispVal] -> ThrowsError LispVal
-eqv [Atom arg1, Atom arg2] = return . Bool $ arg1 == arg2
-eqv [Bool arg1, Bool arg2] = return . Bool $ arg1 == arg2
-eqv [String arg1, String arg2] = return . Bool $ arg1 == arg2
-eqv [Number arg1, Number arg2] = return . Bool $ arg1 == arg2
-eqv [EOF, EOF] = return $ Bool True
-eqv arg@([List _, List _]) = eqvalList eqv arg
-eqv arg@([DottedList _ _, DottedList _ _]) = eqvalDotted eqv arg
-eqv [_, _] = return $ Bool False
-eqv badArgList = throwError $ NumArgs "2" badArgList
+equal [_, _] = return $ Bool False
+equal badArgList = throwError $ NumArgs "2" badArgList
 
 ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
 ioPrimitives = [("open-input-file", makePort ReadMode),
