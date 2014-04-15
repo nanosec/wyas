@@ -458,16 +458,16 @@ cdr [badArg] = throwError $ TypeMismatch "non-empty list" badArg
 cdr badArgList = throwError $ NumArgs "1" badArgList
 
 equal :: [LispVal] -> ThrowsError LispVal
-equal [Atom arg1, Atom arg2] = return . Bool $ arg1 == arg2
-equal [Bool arg1, Bool arg2] = return . Bool $ arg1 == arg2
-equal [String arg1, String arg2] = return . Bool $ arg1 == arg2
-equal [Number arg1, Number arg2] = return . Bool $ arg1 == arg2
-equal [EOF, EOF] = return $ Bool True
+equal [Atom   x, Atom   y] = return . Bool $ x == y
+equal [Bool   x, Bool   y] = return . Bool $ x == y
+equal [String x, String y] = return . Bool $ x == y
+equal [Number x, Number y] = return . Bool $ x == y
+equal [EOF     , EOF     ] = return $ Bool True
 equal arg@([List xs, List ys]) =
     return . Bool $ (length xs == length ys) && (all equalPair $ zip xs ys)
     where equalPair (x, y) = case equal [x, y] of
                                Right (Bool val) -> val
-                               Left err -> False
+                               Left _ -> error "equal: unexpected error"
 equal arg@([DottedList xs x, DottedList ys y]) =
     do lastEqual <- equal [x,y]
        case lastEqual of
