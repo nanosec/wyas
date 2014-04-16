@@ -224,10 +224,10 @@ primitiveBindings =
 --Evaluation
 
 eval :: Env -> LispVal -> IOThrowsError LispVal
+eval env (Atom id) = getVar env id
+eval env val@(Bool   _) = return val
 eval env val@(String _) = return val
 eval env val@(Number _) = return val
-eval env val@(Bool _) = return val
-eval env (Atom id) = getVar env id
 eval env (List [Atom "quote", val]) = return val
 eval env (List (Atom "and" : exprs)) =
     case exprs of
