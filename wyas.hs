@@ -8,7 +8,7 @@ import Control.Monad
 import Control.Monad.Error
 import qualified Control.Exception as Ex
 import Data.IORef
-import Data.List
+import Data.List (foldl1', isInfixOf)
 
 data LispVal = Atom String
               | Bool Bool
@@ -388,7 +388,8 @@ primitives = [("+", numericOp (+)),
               ("equal?", equal)]
 
 numericOp :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
-numericOp op args@(_:_:_) = mapM fromNumber args >>= return . Number . foldl1 op
+numericOp op args@(_:_:_) = mapM fromNumber args >>=
+                            return . Number . foldl1' op
 numericOp _ args = throwError $ NumArgs "> 1" args
 
 numericBinop :: (Integer -> Integer -> Integer) ->
