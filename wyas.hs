@@ -362,7 +362,7 @@ primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [("+", numericOp (+)),
               ("-", numericOp (-)),
               ("*", numericOp (*)),
-              ("/", numericOp div),
+              ("/", checkedDiv),
               ("modulo", numericBinop mod),
               ("quotient", numericBinop quot),
               ("remainder", numericBinop rem),
@@ -400,6 +400,12 @@ numericBinop _ args = throwError $ NumArgs "2" args
 fromNumber :: LispVal -> ThrowsError Integer
 fromNumber (Number num) = return num
 fromNumber notNum = throwError $ TypeMismatch "number" notNum
+
+checkedDiv :: [LispVal] -> ThrowsError LispVal
+checkedDiv args = do zeroExists <- Number 0 `elem'` args
+                     if zeroExists
+                        then throwError $ Default "Division by zero"
+                        else numericOp div args
 
 unaryOp :: (LispVal -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
 unaryOp op [arg] = op arg
