@@ -138,34 +138,32 @@ data LispError = Default String
                | Parser ParseError
                | NoExprs
                | IncompleteExpr String
+               | BadSpecialForm String LispVal
+               | UnboundVar String
+               | NotFunction LispVal
                | NumArgs String [LispVal]
                | TypeMismatch String LispVal
-               | BadSpecialForm String LispVal
-               | NotFunction LispVal
-               | UnboundVar String
                | DivideByZero
                | IOException String
                | Unexpected String
 
-showError :: LispError -> String
-showError (Default message) = message
-showError (Parser parseErr) = "Parse error at " ++ show parseErr
-showError NoExprs = "No expressions to evaluate"
-showError (IncompleteExpr line) = "Incomplete expression: " ++ line
-showError (NumArgs range given) =
-    "Arity mismatch: expected " ++ range ++ " argument(s), given " ++ values
-    where values = case given of [] -> "none"
-                                 _  -> "value(s) " ++ unwordsList given
-showError (TypeMismatch expected found) =
-    "Invalid type: expected " ++ expected ++ ", found " ++ show found
-showError (BadSpecialForm message form) = message ++ ": " ++ show form
-showError (NotFunction value) = "Not a function: " ++ show value
-showError (UnboundVar var) = "Unbound variable: " ++ var
-showError DivideByZero = "Error: division by zero"
-showError (IOException message) = message
-showError (Unexpected wyasFunction) = wyasFunction ++ ": unexpected error"
-
-instance Show LispError where show = showError
+instance Show LispError where
+    show (Default message) = message
+    show (Parser parseError) = "Parse error at " ++ show parseError
+    show NoExprs = "No expressions to evaluate"
+    show (IncompleteExpr line) = "Incomplete expression: " ++ line
+    show (BadSpecialForm message form) = message ++ ": " ++ show form
+    show (UnboundVar var) = "Unbound variable: " ++ var
+    show (NotFunction value) = "Not a function: " ++ show value
+    show (NumArgs range given) =
+        "Arity mismatch: expected " ++ range ++ " argument(s), given " ++ values
+        where values = case given of [] -> "none"
+                                     _  -> "value(s) " ++ unwordsList given
+    show (TypeMismatch expected found) =
+        "Invalid type: expected " ++ expected ++ ", found " ++ show found
+    show DivideByZero = "Error: division by zero"
+    show (IOException message) = message
+    show (Unexpected wyasFunction) = wyasFunction ++ ": unexpected error"
 
 instance Error LispError where
      noMsg = Default "An error has occurred"
