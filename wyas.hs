@@ -136,15 +136,22 @@ parseExprs =
 
 data LispError = Default String
                | Parser ParseError
+               | NoExprs
+               | IncompleteExpr String
                | NumArgs String [LispVal]
                | TypeMismatch String LispVal
                | BadSpecialForm String LispVal
                | NotFunction LispVal
                | UnboundVar String
+               | DivideByZero
+               | IOException String
+               | Unexpected String
 
 showError :: LispError -> String
 showError (Default message) = message
 showError (Parser parseErr) = "Parse error at " ++ show parseErr
+showError NoExprs = "No expressions to evaluate"
+showError (IncompleteExpr line) = "Incomplete expression: " ++ line
 showError (NumArgs range given) =
     "Arity mismatch: expected " ++ range ++ " argument(s), given " ++ values
     where values = case given of [] -> "none"
@@ -154,6 +161,9 @@ showError (TypeMismatch expected found) =
 showError (BadSpecialForm message form) = message ++ ": " ++ show form
 showError (NotFunction value) = "Not a function: " ++ show value
 showError (UnboundVar var) = "Unbound variable: " ++ var
+showError DivideByZero = "Error: division by zero"
+showError (IOException message) = message
+showError (Unexpected wyasFunction) = wyasFunction ++ ": unexpected error"
 
 instance Show LispError where show = showError
 
@@ -257,7 +267,8 @@ eval env form@((List (Atom "cond" : clauseList))) =
                 Atom "else" ->
                     if null rest
                        then evalExprs env exprs
-                       else throwError $ Default "'else' clause must be last"
+                       else throwError $
+                                BadSpecialForm "'else' clause not last" form
                 _ -> do result <- eval env test
                         case result of
                           Bool False -> clauseRecur rest
@@ -282,7 +293,8 @@ eval env form@((List (Atom "case" : key : clauseList))) =
                    Atom "else" ->
                        if null rest
                           then evalExprs env exprs
-                          else throwError $ Default "'else' clause must be last"
+                          else throwError $
+                                   BadSpecialForm "'else' clause not last" form
              clauseRecur [] _ =
                  throwError $ BadSpecialForm "case: no true clause" form
              clauseRecur _ _ =
@@ -317,7 +329,7 @@ evals :: Env -> [LispVal] -> IOThrowsError [LispVal]
 evals = mapM . eval
 
 evalExprs :: Env -> [LispVal] -> IOThrowsError LispVal
-evalExprs _ [] = throwError $ Default "No expressions to evaluate"
+evalExprs _ [] = throwError NoExprs
 evalExprs env exprs = liftM last $ evals env exprs
 
 elem' :: LispVal -> [LispVal] -> ThrowsError Bool
@@ -404,7 +416,7 @@ fromNumber notNum = throwError $ TypeMismatch "number" notNum
 checkedDiv :: [LispVal] -> ThrowsError LispVal
 checkedDiv args = do zeroExists <- Number 0 `elem'` args
                      if zeroExists
-                        then throwError $ Default "Division by zero"
+                        then throwError DivideByZero
                         else numericOp div args
 
 unaryOp :: (LispVal -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
@@ -494,7 +506,7 @@ ioPrimitives = [("open-input-file", makePort ReadMode),
 liftCheckedIO :: IO a -> IOThrowsError a
 liftCheckedIO action =
     liftIO (Ex.try action) >>=
-    either (\e -> throwError . Default $ show (e :: Ex.IOException)) return
+    either (\e -> throwError . IOException $ show (e :: Ex.IOException)) return
 
 actOnPort :: IOMode -> Handle -> IOThrowsError a -> IOThrowsError a
 actOnPort mode port action =
@@ -542,15 +554,12 @@ readPort [Port port buffer] =
               liftThrows (readExprs line1) `catchError` maybeReadMore
               where maybeReadMore err@(Parser e) =
                         if "unexpected end of input" `isInfixOf` show e
-                           then ifEOF (throwError $ Default incompleteExprMsg)
+                           then ifEOF (throwError $ IncompleteExpr errorLine)
                                       (do line2 <- liftCheckedIO $ hGetLine port
                                           readCompleteExprs (line1 ++ line2)
                                                             errorLine)
                            else throwError err
-                    maybeReadMore _ =
-                        throwError $ Default "readPort: unexpected error"
-                    incompleteExprMsg =
-                        "Incomplete expression starting at line: " ++ errorLine
+                    maybeReadMore _ = throwError $ Unexpected "readPort"
 readPort [notPort] = throwError $ TypeMismatch "input port" notPort
 readPort badArgList = throwError $ NumArgs "0 or 1" badArgList
 
