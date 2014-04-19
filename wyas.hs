@@ -314,7 +314,9 @@ eval env form@(List (Atom "lambda" : rest)) =
       _ -> throwError $ BadSpecialForm "ill-formed lambda" form
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
 eval env (List [Atom "load", String filename]) =
-    (liftIO $ readFile filename) >>= liftThrows . readExprs >>= evalExprs env
+    (liftCheckedIO $ readFile filename) >>=
+    liftThrows . readExprs >>=
+    evalExprs env
 eval env (List [Atom "read"]) = readStdin env
 eval env (List (function : args)) =
     do f <- eval env function
