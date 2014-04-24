@@ -22,7 +22,7 @@ data LispVal = Atom String
               | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
               | IOFunc ([LispVal] -> IOThrowsError LispVal)
               | Func {params :: [String],
-                      vararg :: (Maybe String),
+                      vararg :: Maybe String,
                       body :: [LispVal],
                       closure :: Env}
 
@@ -258,7 +258,7 @@ eval env (List [Atom "if", pred, conseq, alt]) =
        case result of
          Bool False -> eval env alt
          _ -> eval env conseq
-eval env form@((List (Atom "cond" : clauseList))) =
+eval env form@(List (Atom "cond" : clauseList)) =
     clauseRecur clauseList
     where clauseRecur (List (test : exprs) : rest) =
               case test of
@@ -278,7 +278,7 @@ eval env form@((List (Atom "cond" : clauseList))) =
           clauseRecur [] =
               throwError $ BadSpecialForm "cond: no true clause" form
           clauseRecur _ = throwError $ BadSpecialForm "ill-formed cond" form
-eval env form@((List (Atom "case" : key : clauseList))) =
+eval env form@(List (Atom "case" : key : clauseList)) =
     do value <- eval env key
        clauseRecur clauseList value
        where clauseRecur (List (test : exprs) : rest) value =
@@ -343,7 +343,7 @@ fromAtom :: LispVal -> ThrowsError String
 fromAtom (Atom x) = return x
 fromAtom notVar = throwError $ TypeMismatch "variable" notVar
 
-makeFunc :: (Maybe String) -> [LispVal] -> [LispVal] -> Env ->
+makeFunc :: Maybe String -> [LispVal] -> [LispVal] -> Env ->
             IOThrowsError LispVal
 makeFunc vararg params body env =
     do params' <- liftThrows $ mapM fromAtom params
@@ -482,12 +482,12 @@ equal [Bool   x, Bool   y] = return . Bool $ x == y
 equal [String x, String y] = return . Bool $ x == y
 equal [Number x, Number y] = return . Bool $ x == y
 equal [EOF     , EOF     ] = return $ Bool True
-equal arg@([List xs, List ys]) =
+equal arg@[List xs, List ys] =
     return . Bool $ (length xs == length ys) && (all equalPair $ zip xs ys)
     where equalPair (x, y) = case equal [x, y] of
                                Right (Bool val) -> val
                                Left _ -> error "equal: unexpected error"
-equal arg@([DottedList xs x, DottedList ys y]) =
+equal arg@[DottedList xs x, DottedList ys y] =
     do lastEqual <- equal [x,y]
        case lastEqual of
          Bool True -> equal [List xs, List ys]
