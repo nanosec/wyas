@@ -41,7 +41,7 @@ promptInput :: String -> IO String
 promptInput prompt = flushStr prompt >> getLine
 
 readEval :: Env -> String -> IOThrowsError [LispVal]
-readEval env exprs = (liftThrows $ readExprs exprs) >>= evals env
+readEval env exprs = liftThrows (readExprs exprs) >>= evals env
 
 printResults :: IOThrowsError [LispVal] -> IO ()
 printResults = (mapM_ putStrLn =<<) . ioThrowsToIOStrings
@@ -223,7 +223,7 @@ bindVars envRef = liftM last . mapM (bindVar envRef)
 
 primitiveBindings :: IO Env
 primitiveBindings =
-    (join $ bindVar <$> nullEnv <*> stdinPort) >>=
+    join (bindVar <$> nullEnv <*> stdinPort) >>=
     flip bindVars allPrimitives
     where allPrimitives = map (makeValue PrimitiveFunc) primitives
                           ++ map (makeValue IOFunc) ioPrimitives
@@ -314,7 +314,7 @@ eval env form@(List (Atom "lambda" : rest)) =
       _ -> throwError $ BadSpecialForm "ill-formed lambda" form
 eval env (List [Atom "set!", Atom var, form]) = eval env form >>= setVar env var
 eval env (List [Atom "load", String filename]) =
-    (liftCheckedIO $ readFile filename) >>=
+    liftCheckedIO (readFile filename) >>=
     liftThrows . readExprs >>=
     evalExprs env
 eval env (List [Atom "read"]) = readStdin env
@@ -360,7 +360,7 @@ apply (IOFunc func) args = func args
 apply (Func params vararg body closure) args =
     if (numParams > numArgs) || (vararg == Nothing && numParams < numArgs)
        then throwError $ NumArgs (show numParams) args
-       else (liftIO $ bindVars closure argBindings) >>= flip evalExprs body
+       else liftIO (bindVars closure argBindings) >>= flip evalExprs body
     where numParams = length params
           numArgs = length args
           (reqArgs, optArgs) = splitAt numParams args
@@ -482,12 +482,12 @@ equal [Bool   x, Bool   y] = return . Bool $ x == y
 equal [String x, String y] = return . Bool $ x == y
 equal [Number x, Number y] = return . Bool $ x == y
 equal [EOF     , EOF     ] = return $ Bool True
-equal arg@[List xs, List ys] =
+equal [List xs, List ys] =
     return . Bool $ (length xs == length ys) && (all equalPair $ zip xs ys)
     where equalPair (x, y) = case equal [x, y] of
                                Right (Bool val) -> val
                                Left _ -> error "equal: unexpected error"
-equal arg@[DottedList xs x, DottedList ys y] =
+equal [DottedList xs x, DottedList ys y] =
     do lastEqual <- equal [x,y]
        case lastEqual of
          Bool True -> equal [List xs, List ys]
