@@ -293,6 +293,8 @@ eval env form@(List (Atom "case" : key : clauseList)) =
                           then evalExprs env exprs
                           else throwError $
                                    BadSpecialForm "'else' clause not last" form
+                   _ -> throwError $
+                            BadSpecialForm "case: not a list or 'else'" test
              clauseRecur [] _ =
                  throwError $ BadSpecialForm "case: no true clause" form
              clauseRecur _ _ =
