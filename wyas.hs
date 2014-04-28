@@ -488,7 +488,7 @@ equal [List xs, List ys] =
     return . Bool $ (length xs == length ys) && (all equalPair $ zip xs ys)
     where equalPair (x, y) = case equal [x, y] of
                                Right (Bool val) -> val
-                               Left _ -> error "equal: unexpected error"
+                               _ -> error "equal: unexpected error"
 equal [DottedList xs x, DottedList ys y] =
     do lastEqual <- equal [x,y]
        case lastEqual of
@@ -520,6 +520,7 @@ actOnPort mode port action =
     where (hIsXable, portType) = case mode of
                                    ReadMode -> (hIsReadable, "input")
                                    WriteMode -> (hIsWritable, "output")
+                                   _ -> error "actOnPort: unexpected error"
 
 makePort :: IOMode -> [LispVal] -> IOThrowsError LispVal
 makePort mode [String filename] =
