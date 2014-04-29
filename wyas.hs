@@ -233,10 +233,10 @@ primitiveBindings =
 
 eval :: Env -> LispVal -> IOThrowsError LispVal
 eval env (Atom id) = getVar env id
-eval env val@(Bool   _) = return val
-eval env val@(String _) = return val
-eval env val@(Number _) = return val
-eval env (List [Atom "quote", val]) = return val
+eval _ val@(Bool   _) = return val
+eval _ val@(String _) = return val
+eval _ val@(Number _) = return val
+eval _ (List [Atom "quote", val]) = return val
 eval env (List (Atom "and" : exprs)) =
     case exprs of
       [] -> return $ Bool True
@@ -324,8 +324,7 @@ eval env (List (function : args)) =
     do f <- eval env function
        xs <- mapM (eval env) args
        apply f xs
-eval env badForm =
-    throwError $ BadSpecialForm "Unrecognized special form" badForm
+eval _ badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
 evals :: Env -> [LispVal] -> IOThrowsError [LispVal]
 evals = mapM . eval
