@@ -585,30 +585,28 @@ closePort _ badArgList = throwError $ NumArgs "1" badArgList
 
 --instance Show
 
-showVal :: LispVal -> String
-showVal (Atom name) = name
-showVal (Bool True) = "#t"
-showVal (Bool False) = "#f"
-showVal (String str) = "\"" ++ str ++ "\""
-showVal (Number num) = show num
-showVal (Port port _) = "<IO port: " ++ filePath ++ ">"
-    where filePath = case port of
-                       (FileHandle file _) -> file
-                       (DuplexHandle file _ _) -> file
-showVal EOF = "<eof>"
-showVal (List contents) = "(" ++ unwordsList contents ++ ")"
-showVal (DottedList init last) =
-    "(" ++ unwordsList init ++ " . " ++ showVal last ++ ")"
-showVal (PrimitiveFunc _) = "<primitive>"
-showVal (IOFunc _) = "<IO primitive>"
-showVal (Func [] (Just vararg) _ _) = "(lambda " ++ vararg ++ " ...)"
-showVal (Func params vararg _ _) =
-    "(lambda (" ++ paramStr ++ varargStr ++ ") ...)"
-    where paramStr = unwords params
-          varargStr = case vararg of Nothing -> ""
-                                     Just arg -> " . " ++ arg
-
 unwordsList :: [LispVal] -> String
-unwordsList = unwords . map showVal
+unwordsList = unwords . map show
 
-instance Show LispVal where show = showVal
+instance Show LispVal where
+    show (Atom name) = name
+    show (Bool True) = "#t"
+    show (Bool False) = "#f"
+    show (String str) = "\"" ++ str ++ "\""
+    show (Number num) = show num
+    show (Port port _) = "<IO port: " ++ filePath ++ ">"
+        where filePath = case port of
+                           (FileHandle file _) -> file
+                           (DuplexHandle file _ _) -> file
+    show EOF = "<eof>"
+    show (List contents) = "(" ++ unwordsList contents ++ ")"
+    show (DottedList init last) =
+        "(" ++ unwordsList init ++ " . " ++ show last ++ ")"
+    show (PrimitiveFunc _) = "<primitive>"
+    show (IOFunc _) = "<IO primitive>"
+    show (Func [] (Just vararg) _ _) = "(lambda " ++ vararg ++ " ...)"
+    show (Func params vararg _ _) =
+        "(lambda (" ++ paramStr ++ varargStr ++ ") ...)"
+        where paramStr = unwords params
+              varargStr = case vararg of Nothing -> ""
+                                         Just arg -> " . " ++ arg
