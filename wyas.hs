@@ -54,11 +54,11 @@ runFile filename =
     primitiveBindings >>= flip readEvalPrint ("(load \"" ++ filename ++ "\")")
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
-until_ pred prompt action = do 
+until_ predicate prompt action = do
   result <- prompt
-  if pred result
+  if predicate result
      then return ()
-     else action result >> until_ pred prompt action
+     else action result >> until_ predicate prompt action
 
 runRepl :: IO ()
 runRepl = primitiveBindings >>=
@@ -99,10 +99,10 @@ parseList = liftM List parseExprs'
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
-  x    <- spaces >> parseExpr
-  xs   <- manyTill (spaces >> parseExpr) (try $ spaces >> char '.')
-  tail <- spaces >> parseExpr
-  spaces >> return (DottedList (x:xs) tail)
+  x     <- spaces >> parseExpr
+  xs    <- manyTill (spaces >> parseExpr) (try $ spaces >> char '.')
+  xLast <- spaces >> parseExpr
+  spaces >> return (DottedList (x:xs) xLast)
 
 parsePair :: Parser LispVal
 parsePair = between (char '(') (char ')') $ try parseDottedList <|> parseList
@@ -232,7 +232,7 @@ primitiveBindings =
 --Evaluation
 
 eval :: Env -> LispVal -> IOThrowsError LispVal
-eval env (Atom id) = getVar env id
+eval env (Atom name) = getVar env name
 eval _ val@(Bool   _) = return val
 eval _ val@(String _) = return val
 eval _ val@(Number _) = return val
@@ -253,8 +253,8 @@ eval env (List (Atom "or" : exprs)) =
                           case result of
                             Bool False -> eval env (List (Atom "or" : rest))
                             _ -> return result
-eval env (List [Atom "if", pred, conseq, alt]) =
-    do result <- eval env pred
+eval env (List [Atom "if", predicate, conseq, alt]) =
+    do result <- eval env predicate
        case result of
          Bool False -> eval env alt
          _ -> eval env conseq
@@ -301,7 +301,7 @@ eval env form@(List (Atom "case" : key : clauseList)) =
                  throwError $ BadSpecialForm "ill-formed case" form
 eval env form@(List (Atom "define" : rest)) =
     case rest of
-      [Atom var, form] -> eval env form >>= defineVar env var
+      [Atom var, expr] -> eval env expr >>= defineVar env var
       (List (Atom var : params) : body) ->
           makeNormalFunc params body env >>= defineVar env var
       (DottedList (Atom var : params) vararg : body) ->
@@ -547,8 +547,8 @@ readPort [Port port buffer] =
                readPort [Port port buffer]
          x:xs -> liftIO $ writeIORef buffer xs >>
                           return x
-    where ifEOF conseq alt = do isEOF <- liftCheckedIO $ hIsEOF port
-                                if isEOF then conseq else alt
+    where ifEOF conseq alt = do isEndOfFile <- liftCheckedIO $ hIsEOF port
+                                if isEndOfFile then conseq else alt
           readLine = ifEOF (return [EOF])
                            (do line <- liftCheckedIO $ hGetLine port
                                readCompleteExprs line line)
@@ -600,8 +600,8 @@ instance Show LispVal where
                            (DuplexHandle file _ _) -> file
     show EOF = "<eof>"
     show (List contents) = "(" ++ unwordsList contents ++ ")"
-    show (DottedList init last) =
-        "(" ++ unwordsList init ++ " . " ++ show last ++ ")"
+    show (DottedList xs x) =
+        "(" ++ unwordsList xs ++ " . " ++ show x ++ ")"
     show (PrimitiveFunc _) = "<primitive>"
     show (IOFunc _) = "<IO primitive>"
     show (Func [] (Just vararg) _ _) = "(lambda " ++ vararg ++ " ...)"
