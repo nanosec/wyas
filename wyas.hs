@@ -608,5 +608,4 @@ instance Show LispVal where
     show (Func params vararg _ _) =
         "(lambda (" ++ paramStr ++ varargStr ++ ") ...)"
         where paramStr = unwords params
-              varargStr = case vararg of Nothing -> ""
-                                         Just arg -> " . " ++ arg
+              varargStr = maybe "" (" . " ++) vararg
