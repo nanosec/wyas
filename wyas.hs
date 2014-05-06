@@ -350,7 +350,11 @@ makeFunc vararg params body env =
     do params' <- liftThrows $ mapM fromAtom params
        return $ Func params' vararg body env
 
+makeNormalFunc :: [LispVal] -> [LispVal] -> Env -> IOThrowsError LispVal
 makeNormalFunc = makeFunc Nothing
+
+makeVariadicFunc :: LispVal -> [LispVal] -> [LispVal] -> Env ->
+                    IOThrowsError LispVal
 makeVariadicFunc vararg params body env =
     do vararg' <- liftThrows $ fromAtom vararg
        makeFunc (Just vararg') params body env
@@ -451,7 +455,10 @@ boolOp extractor op args@(_:_:_) =
        return . Bool . and . zipWith op args' $ tail args'
 boolOp _ _ arg = throwError $ NumArgs "> 1" arg
 
+numBoolOp :: (Integer -> Integer -> Bool) -> [LispVal] -> ThrowsError LispVal
 numBoolOp = boolOp fromNumber
+
+strBoolOp :: (String -> String -> Bool) -> [LispVal] -> ThrowsError LispVal
 strBoolOp = boolOp fromString
 
 fromString :: LispVal -> ThrowsError String
@@ -529,6 +536,7 @@ makePort mode [String filename] =
 makePort _ [notString] = throwError $ TypeMismatch "string" notString
 makePort _ badArgList = throwError $ NumArgs "1" badArgList
 
+stdinVar :: String
 stdinVar = "#stdin"
 
 stdinPort :: IO (String, LispVal)
