@@ -8,9 +8,6 @@ import Wyas.Types
 readBy :: Parser a -> String -> ThrowsError a
 readBy p = either (throwError . Parser) return . parse p ""
 
-readExpr :: String -> ThrowsError LispVal
-readExpr = readBy parseExpr
-
 readExprs :: String -> ThrowsError [LispVal]
 readExprs = readBy parseExprs
 
