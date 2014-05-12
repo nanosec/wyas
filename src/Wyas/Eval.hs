@@ -1,6 +1,7 @@
 module Wyas.Eval (evals) where
 
-import Control.Monad (liftM)
+import Control.Applicative ((<$>), (<*>))
+import Control.Monad (join, liftM)
 import Control.Monad.Error (throwError)
 import Control.Monad.IO.Class (liftIO)
 import Wyas.Environment (getVar, setVar, defineVar, bindVars)
@@ -97,10 +98,9 @@ eval env (List [Atom "load", String filename]) =
     liftThrows . readExprs >>=
     evalExprs env
 eval env (List [Atom "read"]) = readStdin env
-eval env (List (function : args)) =
-    do f <- eval env function
-       xs <- mapM (eval env) args
-       apply f xs
+eval env (List (function : args)) = join (apply <$> f <*> xs)
+    where f = eval env function
+          xs = mapM (eval env) args
 eval _ badForm = throwError $ BadSpecialForm "Unrecognized special form" badForm
 
 evals :: Env -> [LispVal] -> IOThrowsError [LispVal]
