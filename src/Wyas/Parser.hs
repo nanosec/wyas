@@ -5,12 +5,6 @@ import Control.Monad.Error (throwError)
 import Text.ParserCombinators.Parsec
 import Wyas.Types
 
-readBy :: Parser a -> String -> ThrowsError a
-readBy p = either (throwError . Parser) return . parse p ""
-
-readExprs :: String -> ThrowsError [LispVal]
-readExprs = readBy parseExprs
-
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 
@@ -67,3 +61,9 @@ parseExprs =
        return x
     where endOfInput = eof >> return []
           illegalChar = anyChar >>= unexpected . show
+
+readBy :: Parser a -> String -> ThrowsError a
+readBy p = either (throwError . Parser) return . parse p ""
+
+readExprs :: String -> ThrowsError [LispVal]
+readExprs = readBy parseExprs

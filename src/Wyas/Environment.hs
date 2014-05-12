@@ -1,11 +1,11 @@
 module Wyas.Environment
     (
       nullEnv
+    , bindVar
+    , bindVars
     , getVar
     , setVar
     , defineVar
-    , bindVar
-    , bindVars
     ) where
 
 import Control.Monad (liftM)
@@ -16,6 +16,17 @@ import Wyas.Types
 
 nullEnv :: IO Env
 nullEnv = newIORef []
+
+bindVar :: Env -> (String, LispVal) -> IO Env
+bindVar envRef assoc =
+    do binding <- makeBinding assoc
+       modifyIORef envRef (binding:)
+       return envRef
+    where makeBinding (var, value) = do ref <- newIORef value
+                                        return (var, ref)
+
+bindVars :: Env -> [(String, LispVal)] -> IO Env
+bindVars envRef = liftM last . mapM (bindVar envRef)
 
 actOnVar :: (IORef LispVal -> IOThrowsError LispVal) -> Env -> String ->
             IOThrowsError LispVal
@@ -37,14 +48,3 @@ defineVar envRef var value =
     where makeVar _ = liftIO $ do valueRef <- newIORef value
                                   modifyIORef envRef ((var, valueRef):)
                                   return value
-
-bindVar :: Env -> (String, LispVal) -> IO Env
-bindVar envRef assoc =
-    do binding <- makeBinding assoc
-       modifyIORef envRef (binding:)
-       return envRef
-    where makeBinding (var, value) = do ref <- newIORef value
-                                        return (var, ref)
-
-bindVars :: Env -> [(String, LispVal)] -> IO Env
-bindVars envRef = liftM last . mapM (bindVar envRef)

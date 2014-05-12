@@ -1,7 +1,7 @@
 module Wyas.Primitives
     (
-      elem'
-    , primitives
+      primitives
+    , elem'
     , ioPrimitives
     , liftCheckedIO
     , stdinPort
@@ -17,13 +17,6 @@ import System.IO
 import Wyas.Environment (getVar)
 import Wyas.Parser (readExprs)
 import Wyas.Types
-
-elem' :: LispVal -> [LispVal] -> ThrowsError Bool
-elem' _ [] = return False
-elem' x (y:ys) = do result <- equal [x, y]
-                    case result of
-                      Bool True -> return True
-                      _ -> elem' x ys
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [("+", numericOp (+)),
@@ -54,6 +47,10 @@ primitives = [("+", numericOp (+)),
               ("cdr", cdr),
               ("equal?", equal)]
 
+fromNumber :: LispVal -> ThrowsError Integer
+fromNumber (Number num) = return num
+fromNumber notNum = throwError $ TypeMismatch "number" notNum
+
 numericOp :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericOp op args@(_:_:_) = mapM fromNumber args >>=
                             return . Number . foldl1' op
@@ -64,9 +61,12 @@ numericBinop :: (Integer -> Integer -> Integer) ->
 numericBinop op args@[_,_] = numericOp op args
 numericBinop _ args = throwError $ NumArgs "2" args
 
-fromNumber :: LispVal -> ThrowsError Integer
-fromNumber (Number num) = return num
-fromNumber notNum = throwError $ TypeMismatch "number" notNum
+elem' :: LispVal -> [LispVal] -> ThrowsError Bool
+elem' _ [] = return False
+elem' x (y:ys) = do result <- equal [x, y]
+                    case result of
+                      Bool True -> return True
+                      _ -> elem' x ys
 
 checkedDiv :: [LispVal] -> ThrowsError LispVal
 checkedDiv args = do zeroExists <- Number 0 `elem'` args
