@@ -1,6 +1,6 @@
 module Wyas.Types where
 
-import Control.Monad.Error
+import Control.Monad.Error (Error(..), ErrorT, runErrorT, throwError)
 import Data.IORef (IORef)
 import GHC.IO.Handle.Types (Handle (FileHandle, DuplexHandle))
 import Text.ParserCombinators.Parsec (ParseError)
