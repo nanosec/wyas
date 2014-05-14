@@ -4,6 +4,7 @@ import Control.Applicative ((<$>), (<*>))
 import Control.Monad (join, liftM)
 import Control.Monad.Error (throwError)
 import Control.Monad.IO.Class (liftIO)
+import Data.Maybe (isNothing)
 import Wyas.Environment (getVar, setVar, defineVar, bindVars)
 import Wyas.Parser (readExprs)
 import Wyas.Primitives (elem', liftCheckedIO, readStdin)
@@ -133,7 +134,7 @@ apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
 apply (PrimitiveFunc func) args = liftThrows $ func args
 apply (IOFunc func) args = func args
 apply (Func params vararg body closure) args =
-    if (numParams > numArgs) || (vararg == Nothing && numParams < numArgs)
+    if (numParams > numArgs) || (isNothing vararg && numParams < numArgs)
        then throwError $ NumArgs (show numParams) args
        else liftIO (bindVars closure argBindings) >>= flip evalExprs body
     where numParams = length params
