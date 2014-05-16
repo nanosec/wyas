@@ -6,7 +6,8 @@ import System.IO (hFlush, stdout)
 import Wyas.Environment (nullEnv, bindVar, bindVars)
 import Wyas.Eval (evals)
 import Wyas.Parser (readExprs)
-import Wyas.Primitives (stdinPort, primitives, ioPrimitives)
+import Wyas.Primitives (primitives, ioPrimitives)
+import Wyas.Primitives.IO (stdinPort)
 import Wyas.Types
 
 readEval :: Env -> String -> IOThrowsError [LispVal]

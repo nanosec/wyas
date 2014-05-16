@@ -7,7 +7,8 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (isNothing)
 import Wyas.Environment (getVar, setVar, defineVar, bindVars)
 import Wyas.Parser (readExprs)
-import Wyas.Primitives (elem', liftCheckedIO, readStdin)
+import Wyas.Primitives.IO (liftCheckedIO, readStdin)
+import Wyas.Primitives.Predicate (elem')
 import Wyas.Types
 
 eval :: Env -> LispVal -> IOThrowsError LispVal
