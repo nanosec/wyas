@@ -7,6 +7,10 @@ unaryOp :: (LispVal -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
 unaryOp op [arg] = op arg
 unaryOp _ args = throwError $ NumArgs "1" args
 
+binaryOp :: ([LispVal] -> ThrowsError LispVal) -> [LispVal] -> ThrowsError LispVal
+binaryOp op args@[_,_] = op args
+binaryOp _ args = throwError $ NumArgs "2" args
+
 boolOp :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] ->
           ThrowsError LispVal
 boolOp extractor op args@(_:_:_) =

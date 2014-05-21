@@ -2,7 +2,7 @@ module Wyas.Primitives.Number (numberPrims) where
 
 import Control.Monad.Error (throwError)
 import Data.List (foldl1')
-import Wyas.Primitives.Internal (boolOp)
+import Wyas.Primitives.Internal (binaryOp, boolOp)
 import Wyas.Primitives.Predicate (elem')
 import Wyas.Types
 
@@ -32,8 +32,7 @@ numericOp _ args = throwError $ NumArgs "> 1" args
 
 numericBinop :: (Integer -> Integer -> Integer) ->
                 [LispVal] -> ThrowsError LispVal
-numericBinop op args@[_,_] = numericOp op args
-numericBinop _ args = throwError $ NumArgs "2" args
+numericBinop = binaryOp . numericOp
 
 checkedDiv :: [LispVal] -> ThrowsError LispVal
 checkedDiv args = do zeroExists <- Number 0 `elem'` args
