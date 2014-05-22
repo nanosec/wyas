@@ -6,7 +6,7 @@ import System.IO (hFlush, stdout)
 import Wyas.Environment (nullEnv, bindVar, bindVars)
 import Wyas.Eval (evals)
 import Wyas.Parser (readExprs)
-import Wyas.Primitives (primitives, ioPrimitives)
+import Wyas.Primitives (allPrimitives)
 import Wyas.Primitives.IO (stdinPort)
 import Wyas.Types
 
@@ -23,9 +23,6 @@ primitiveBindings :: IO Env
 primitiveBindings =
     join (bindVar <$> nullEnv <*> stdinPort) >>=
     flip bindVars allPrimitives
-    where allPrimitives = map (makeValue PrimitiveFunc) primitives
-                          ++ map (makeValue IOFunc) ioPrimitives
-          makeValue constructor (var, func) = (var, constructor func)
 
 runFile :: String -> IO ()
 runFile filename =
