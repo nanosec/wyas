@@ -1,4 +1,4 @@
-module Wyas.Primitives (allPrimitives) where
+module Wyas.Primitives (primitives) where
 
 import Wyas.Primitives.IO (ioPrimitives)
 import Wyas.Primitives.List (listPrims)
@@ -7,10 +7,10 @@ import Wyas.Primitives.Predicate (predicates)
 import Wyas.Primitives.String (stringPrims)
 import Wyas.Types
 
-primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
-primitives = listPrims ++ numberPrims ++ predicates ++ stringPrims
+purePrimitives :: [(String, [LispVal] -> ThrowsError LispVal)]
+purePrimitives = listPrims ++ numberPrims ++ predicates ++ stringPrims
 
-allPrimitives :: [(String, LispVal)]
-allPrimitives = map (makeValue PrimitiveFunc) primitives ++
-                map (makeValue IOFunc       ) ioPrimitives
+primitives :: [(String, LispVal)]
+primitives = map (makeValue PrimitiveFunc) purePrimitives ++
+             map (makeValue IOFunc       ) ioPrimitives
     where makeValue constructor (var, func) = (var, constructor func)

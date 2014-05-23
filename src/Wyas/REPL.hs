@@ -6,7 +6,7 @@ import System.IO (hFlush, stdout)
 import Wyas.Environment (nullEnv, bindVar, bindVars)
 import Wyas.Eval (evals)
 import Wyas.Parser (readExprs)
-import Wyas.Primitives (allPrimitives)
+import Wyas.Primitives (primitives)
 import Wyas.Primitives.IO (stdinPort)
 import Wyas.Types
 
@@ -22,7 +22,7 @@ readEvalPrint env = printResults . readEval env
 primitiveBindings :: IO Env
 primitiveBindings =
     join (bindVar <$> nullEnv <*> stdinPort) >>=
-    flip bindVars allPrimitives
+    flip bindVars primitives
 
 runFile :: String -> IO ()
 runFile filename =
