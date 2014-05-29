@@ -1,7 +1,7 @@
 module Wyas.REPL (runFile, runRepl) where
 
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad (join)
+import Control.Monad (join, unless)
 import System.IO (hFlush, stdout)
 import Wyas.Environment (nullEnv, bindVar, bindVars)
 import Wyas.Eval (evals)
@@ -29,11 +29,9 @@ runFile filename =
     primitiveBindings >>= flip readEvalPrint ("(load \"" ++ filename ++ "\")")
 
 until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
-until_ predicate prompt action = do
-  result <- prompt
-  if predicate result
-     then return ()
-     else action result >> until_ predicate prompt action
+until_ predicate prompt action =
+    do input <- prompt
+       unless (predicate input) $ action input >> until_ predicate prompt action
 
 flushStr :: String -> IO ()
 flushStr str = putStr str >> hFlush stdout
